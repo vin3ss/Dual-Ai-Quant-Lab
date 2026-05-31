@@ -175,6 +175,15 @@ gate did NOT rescue the 2024-26 period — investigate whether it actually de-ri
 
 ## Open issues — surfaced by first real-data run
 
+20. **[HIGH] Regime gate is mis-timed / near-useless on real monthly data (Claude, verified
+   2026-05-31).** Inspected the multiplier over the adjusted Yahoo sample: it stayed at 1.00
+   (full risk) through the worst down months (Oct-24 -7.8%, Feb-25 -8.6%, Mar-26 -10.6%) and
+   cut to 0.42 during *rising* months (Apr-Aug 2025) — it de-risks into rallies. With-gate vs
+   no-gate is a wash (Sharpe 1.21 vs 1.17, MaxDD 8.07% vs 8.87%), so the tiny benefit is luck,
+   not timing. Root cause: 6/12-month MAs + 36-month vol percentile + shift(1) = far too laggy
+   on monthly bars (compounds with #6 VIX-rank saturation). Redesign needed: faster/leading
+   signal — drawdown-from-peak, shorter vol window, or actual India VIX — or drop the gate.
+
 18. **[HIGH] Prices are corporate-action UNadjusted.** Raw bhavcopy close; splits/bonuses
    (e.g. HDFCBANK 2080→745) create fake ~±50% returns that momentum chases. Must use
    adjusted close (vendor) or apply a point-in-time corporate-actions file before any
