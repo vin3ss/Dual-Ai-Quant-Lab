@@ -287,6 +287,10 @@ NSE bull run is statistically thin — do NOT deploy capital on it.
    Net went UP → survivorship is the dominant effect (confirms Gemini). **Bounded conclusion:
    true NSE momentum Sharpe ~0.4-0.7; clean point estimate REQUIRES reconstitution events
    (add dead names back) — the one input still gated by the data wall.**
+   **Sector-neutralization A/B (2026-05-31): real Nifty-500 industries (20 sectors) from the
+   constituent file → `sectors.csv`, sector_neutral ON vs OFF on the same universe: WF Sharpe
+   0.69 → 0.73 (marginal), but vol/MaxDD rose to ~17%/20% (more concentrated book). Verdict:
+   legitimate refinement, immaterial edge change — momentum's ~0.7 holds with or without it.**
 
 20. **[HIGH] Regime gate is mis-timed / near-useless on real monthly data (Claude, verified
    2026-05-31).** Inspected the multiplier over the adjusted Yahoo sample: it stayed at 1.00
