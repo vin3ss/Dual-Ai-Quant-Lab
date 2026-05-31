@@ -95,13 +95,13 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    `data.macro` must be indexed by release/availability date, not reference month. CPI/IIP
    revisions, RBI event timing, and month-end resampling can all create look-ahead unless
    handled by a proper release calendar.
-10. **[MED→HIGH] Macro tilt is annihilated by sector-neutralization (Claude, verified).**
-   Macro emits a *uniform per-sector* tilt, but `PortfolioConstructor.to_weights` with the
-   default `sector_neutral=True` demeans within each sector — which zeroes the macro
-   contribution entirely (probe confirmed: collapses to 0). Fix: apply macro as a
-   *sector-allocation overlay* in the portfolio/risk layer (tilt sector budgets), NOT as a
-   cross-sectional name score that gets sector-demeaned; or explicitly exempt macro from
-   neutralization. Until fixed, do not rely on macro in a sector-neutral configuration.
+10. ~~**[MED→HIGH] Macro tilt is annihilated by sector-neutralization.**~~ ✅ FIXED
+   (2026-05-31). Added `PortfolioConstructor.apply_sector_tilt()`: applies the macro view
+   as a sector-budget overlay AFTER name selection (scales each name by
+   `1 + strength*tilt`, renormalizes to preserve gross), so it survives instead of being
+   demeaned. Tests in `tests/test_macro_integration.py` incl. one proving the old blending
+   path zeroes out while the overlay path works. Usage: blend momentum/quality/etc. as
+   before, but route macro through `apply_sector_tilt`, not `combine`.
 
 ## Open issues — Sentiment signal
 
@@ -125,8 +125,9 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    clips oversized trades; `volume` added to MarketData + loader. New issue #7 logged.
 5. ~~**Fill remaining signals**~~ ✅ DONE — options (overlay), macro (sector tilt), sentiment
    all implemented + tested. Core signal set complete.
-5b. **Fix issue #10** — wire macro as a sector-budget overlay (it's inert under
-   sector-neutralization today). ← NEXT (quick, high-value)
+5b. ~~**Fix issue #10**~~ ✅ DONE — `apply_sector_tilt` sector-budget overlay.
+6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
+   The thing that separates a real edge from a curve-fit. ← NEXT
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 
