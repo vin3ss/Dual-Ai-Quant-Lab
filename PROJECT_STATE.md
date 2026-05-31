@@ -33,7 +33,7 @@ almost always hides a leak. The critic's job is to find it before capital does.
 | alpha | `technical/momentum.py` | ✅ implemented | 12-1 risk-adjusted momentum |
 | alpha | `fundamental/quality.py` | ✅ implemented | ROE + accruals + earnings stability |
 | alpha | `regime/__init__.py` | ✅ implemented + refined | per-date multiplier [0,1]; macro overlay refinement pending (issue #6) |
-| alpha | `sentiment/` | 🔴 stub | earnings-call / news NLP |
+| alpha | `sentiment/` | ✅ implemented | consumes date×ticker news panel; z-scored, lagged; neutral when absent; issue #11 |
 | alpha | `macro/` | ✅ implemented (sector tilt) | repo/CPI/IIP → sector tilt; neutral when absent; see issues #9, #10 |
 | alpha | `options/` | ✅ implemented (overlay) | PCR/FII-deriv → bounded [-1,1] conviction; neutral when absent |
 | portfolio | `portfolio/constructor.py` | ✅ implemented | signal blend → top-quantile weights |
@@ -103,6 +103,15 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    cross-sectional name score that gets sector-demeaned; or explicitly exempt macro from
    neutralization. Until fixed, do not rely on macro in a sector-neutral configuration.
 
+## Open issues — Sentiment signal
+
+11. **[MED] Sentiment panel leaks via timestamp errors / stale fills (ChatGPT).**
+   `data.news` must be indexed by publication/availability timestamp, not fiscal period,
+   call date, or article/event date. Forward-filled stale sentiment overstates persistence;
+   coverage is survivorship-biased if delisted/less-covered names are absent; NLP scores may
+   be vendor/model-revised after the fact. (Minor: panel columns are upper-cased — relies on
+   the loader's upper-cased tickers to align; mixed-case universes would mismatch.)
+
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
@@ -114,9 +123,10 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 4. ~~**Honest cost & capacity**~~ ✅ DONE (2026-05-31). Itemized per-side cost model
    (STT/exchange/SEBI/GST/stamp), nonlinear ADV-participation impact, capacity cap that
    clips oversized trades; `volume` added to MarketData + loader. New issue #7 logged.
-5. **Fill remaining signals** — ✅ options flow DONE (overlay); ✅ macro DONE (sector tilt,
-   issues #9/#10). Remaining: sentiment (earnings-call/news NLP). ← NEXT: sentiment
-   (then address issue #10: wire macro as a sector-budget overlay, not a demeaned score)
+5. ~~**Fill remaining signals**~~ ✅ DONE — options (overlay), macro (sector tilt), sentiment
+   all implemented + tested. Core signal set complete.
+5b. **Fix issue #10** — wire macro as a sector-budget overlay (it's inert under
+   sector-neutralization today). ← NEXT (quick, high-value)
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 
