@@ -109,7 +109,7 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 
 ## Open issues — Gemini red-team audit (2026-05-31)
 
-14. **[MED→HIGH] Execution-price simultaneity.** Backtest earns close(t-1)→close(t) on
+14. **[HIGH — both AIs' #1 priority] Execution-price simultaneity / look-ahead.** Backtest earns close(t-1)→close(t) on
    weights decided at close(t-1) — i.e. signal and execution at the same close, which isn't
    tradable (NSE close is a 3:00–3:30 VWAP). Should execute at next open/VWAP. Bias real but
    smaller on monthly bars; Gemini's "3-5% CAGR" is an estimate, unverified. Add an
@@ -193,7 +193,28 @@ so 1.06 is optimistic.** Not a green light. Momentum looks real-ish 2019-2023, r
 since. Main remaining caveat: survivorship / point-in-time constituents (#16). Also: regime
 gate did NOT rescue the 2024-26 period — investigate whether it actually de-risked.
 
+## Decision (2026-05-31, after ChatGPT + Gemini consult)
+
+Both AIs agree: **fix engine realism #14/#15/#17 FIRST** (order: #14 execution → #17 cash
+yield → #15 vol/capacity). Gemini frames #14 as a look-ahead leak (signal at month-end close
+executed at that same close), not mere realism — top priority. Contested #2: ChatGPT says add
+quality next; Gemini ranks quality LAST (piling factors on a discretionary universe) and puts
+true index constituents second. DEFERRED until after realism fixes. ChatGPT cheap win adopted:
+a **momentum health dashboard** (rolling 12m OOS Sharpe, drawdown, sector exposure, cash%,
+turnover/capacity clips, hit-rate by regime) to tell whether 2024-26 is normal cyclicality or
+strategy decay. Sample-size caveat (Gemini): 7yr / ~5 walk-forward windows over the craziest
+NSE bull run is statistically thin — do NOT deploy capital on it.
+
 ## Open issues — surfaced by first real-data run
+
+21. **[HIGH] Universe construction is discretionary & result-sensitive (Gemini #3 + Claude
+   test).** Gemini's hypothesis: ranking liquid universe by turnover (price×vol) pre-selects
+   momentum winners (price up → turnover up → enters universe; crash → turnover down → exits
+   before momentum holds it down) → inflates Sharpe. EMPIRICAL TEST on adjusted data: ranking
+   by raw volume gave HIGHER WF Sharpe (0.94) than turnover (0.83) — so the *direction* of
+   Gemini's mechanism did NOT hold, but it proved the result swings ~0.1 Sharpe on an arbitrary
+   universe choice = fragility. Resolution: move to a **rigid external index constituent set**
+   (Nifty 500 PiT membership) so universe selection isn't discretionary or price-contaminated.
 
 20. **[HIGH] Regime gate is mis-timed / near-useless on real monthly data (Claude, verified
    2026-05-31).** Inspected the multiplier over the adjusted Yahoo sample: it stayed at 1.00
