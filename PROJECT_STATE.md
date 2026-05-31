@@ -280,6 +280,13 @@ NSE bull run is statistically thin — do NOT deploy capital on it.
    exists (only current constituents + price history on GitHub/Kaggle; true reconstitution
    history = assemble from NSE circulars by hand, or paid niftyindices/Prowess). Engine is ready
    the moment a `constituents.csv` is obtained — that data is now the gating decision.
+   **Run (2026-05-31): fixed CURRENT Nifty-500 as universe (user supplied current list; no
+   reconstitution events available — NSE/niftyindices blocked across sandbox/web_fetch/Chrome).**
+   WF Sharpe **0.69** vs liquidity-filter 0.42. But this swapped two effects at once: removed
+   turnover-discretion (good) AND added FULL survivorship (holding 2026 members through 2019).
+   Net went UP → survivorship is the dominant effect (confirms Gemini). **Bounded conclusion:
+   true NSE momentum Sharpe ~0.4-0.7; clean point estimate REQUIRES reconstitution events
+   (add dead names back) — the one input still gated by the data wall.**
 
 20. **[HIGH] Regime gate is mis-timed / near-useless on real monthly data (Claude, verified
    2026-05-31).** Inspected the multiplier over the adjusted Yahoo sample: it stayed at 1.00
