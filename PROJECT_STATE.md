@@ -32,12 +32,12 @@ almost always hides a leak. The critic's job is to find it before capital does.
 |---|---|---|---|
 | alpha | `technical/momentum.py` | ✅ implemented | 12-1 risk-adjusted momentum |
 | alpha | `fundamental/quality.py` | ✅ implemented | ROE + accruals + earnings stability |
-| alpha | `regime/__init__.py` | 🟠 implemented, NOT wired in | per-date multiplier [0,1]; see open issues |
+| alpha | `regime/__init__.py` | 🟡 wired in; internals to refine | per-date multiplier [0,1]; see open issues 1-3,5 |
 | alpha | `sentiment/` | 🔴 stub | earnings-call / news NLP |
 | alpha | `macro/` | 🔴 stub | RBI/CPI tilts |
 | alpha | `options/` | 🔴 stub | OI / PCR / FII-deriv overlay |
 | portfolio | `portfolio/constructor.py` | ✅ implemented | signal blend → top-quantile weights |
-| risk | `risk/manager.py` | ✅ implemented | caps + vol target + DD de-risk; NO regime hook yet |
+| risk | `risk/manager.py` | ✅ implemented | caps + vol target + DD de-risk + `apply_regime` hook |
 | execution | `execution/__init__.py` | 🔴 stub | target broker: Paytm Money Open API (`pyPMClient`) |
 | backtest | `backtest/engine.py` | ✅ implemented | vectorized, Indian cost model, shift(1) anti-leakage |
 | data | `data/market_data.py` | ✅ synthetic only | real data (nsefin/bhavcopy) not yet connected |
@@ -55,16 +55,18 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    Fix: point-in-time constituents, or document the bias loudly.
 3. **[LOW→MED] Hand-tuned magic numbers.** Gate levels + percentile cutoffs are assumed,
    not calibrated. Fix: move to config, reduce DoF, show insensitivity to small changes.
-4. **[LOW] Not wired into pipeline.** Nothing consumes the multiplier yet. Fix: add
-   `RiskManager.apply_regime(weights, multiplier)` + a test that it shrinks drawdown in a
-   synthetic crash, plus a shift-invariance test across all dates (not just last bar).
+4. ~~**[LOW] Not wired into pipeline.**~~ ✅ DONE (2026-05-31). `RiskManager.apply_regime`
+   added + wired into demo. Tests: crash-drawdown reduction (51.8%→28.3% on the test
+   scenario) and all-dates no-future-leakage. Demo Sharpe 0.29→0.46, maxDD 14.1%→10.5%.
+   Note: ChatGPT's proposed shift-invariance test was buggy (compared mismatched slices);
+   replaced with a proper detector leakage test perturbing all future bars.
 5. **[LOW] `prices.iloc[0]` base.** NaN at t0 drops a ticker for all history → survivorship
    vector. Fix: normalize by first valid value per column, or build index from returns.
 
 ## Roadmap (priority order)
 
-1. **Wire regime into RiskManager** so the multiplier actually scales exposure. ← NEXT
-2. **Refine RegimeDetector** per open issues 1–3, 5.
+1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
+2. **Refine RegimeDetector** per open issues 1–3, 5. ← NEXT (ChatGPT)
 3. **Connect real data** (`nsefin` / bhavcopy) — replace synthetic; enforce point-in-time.
 4. **Honest cost & capacity** — validate Indian cost model, add ADV/liquidity limits.
 5. **Fill remaining signals** — options flow, sentiment, macro (each critiqued).

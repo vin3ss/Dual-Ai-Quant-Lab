@@ -44,3 +44,21 @@ class RiskManager:
         mult = (1 - (dd - self.cfg.drawdown_derisk_trigger).clip(lower=0) /
                 (1 - self.cfg.drawdown_derisk_trigger)).clip(lower=0.0, upper=1.0)
         return weights.mul(mult.reindex(weights.index).fillna(1.0), axis=0)
+
+    def apply_regime(self, weights: pd.DataFrame,
+                     multiplier: pd.Series) -> pd.DataFrame:
+        """Scale exposure by a point-in-time regime multiplier in [0, 1].
+
+        Consistent with the other overlays: deterministic, vectorized, and never
+        amplifies (multiplier is capped at 1, so no hidden leverage). The
+        multiplier is assumed already point-in-time (see RegimeDetector).
+        """
+        if not isinstance(multiplier, pd.Series):
+            raise TypeError("multiplier must be a pandas Series")
+
+        aligned = multiplier.reindex(weights.index).ffill().fillna(1.0)
+
+        if ((aligned < 0) | (aligned > 1)).any():
+            raise ValueError("regime multiplier must lie in [0, 1]")
+
+        return weights.mul(aligned, axis=0)

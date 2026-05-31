@@ -12,6 +12,7 @@ from ..config import DEFAULT
 from ..data import make_synthetic_data
 from ..alpha.technical import MomentumSignal
 from ..alpha.fundamental import QualitySignal
+from ..alpha.regime import RegimeDetector
 from ..portfolio import PortfolioConstructor
 from ..risk import RiskManager
 from ..backtest import Backtester
@@ -34,6 +35,10 @@ def main() -> None:
     rm = RiskManager(cfg.risk)
     weights = rm.apply_caps(weights, data.sectors)
     weights = rm.vol_target(weights, data.returns())
+
+    # Regime gate: scale exposure down in unfavorable market states
+    regime = RegimeDetector().detect(data)
+    weights = rm.apply_regime(weights, regime)
 
     result = Backtester(cfg).run(weights, data.returns())
 
