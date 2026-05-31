@@ -107,6 +107,40 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    increases longs and REDUCES shorts (the old multiplicative form deepened shorts). Short
    case covered by a test.
 
+## CONSENSUS plan — ChatGPT + Gemini, post-realism (2026-05-31)
+
+Both agree, in order: **(1) #21 PiT index constituents FIRST** (credibility — tells us if 0.42
+is real or a universe-discretion artifact) → **(2) quality factor** (only with true
+`availability_date` from exchange filings; period-end NOT acceptable) → **(3) paper trading
+last**. Regime gate: Gemini says DITCH it (monthly timing = whipsaw; handle risk via
+construction); keep code optional/off. Quality design (ChatGPT): 35% ROE/ROCE, 25% low
+accruals, 20% earnings stability, 10% low leverage, 10% FCF/CFO quality. Blend WITHOUT
+overfitting: equal-weight 0.5/0.5 or a tiny 3-point grid; or cheapest — use quality as a
+FILTER (drop bottom-30% quality from top-momentum names), fewer degrees of freedom.
+Cheapest fundamentals route (ChatGPT): ingest NSE/BSE corporate filings, set
+`availability_date` = exchange filing timestamp. THE fork: free-but-engineering-heavy filings
+pipeline vs paid PiT data (Prowess/Refinitiv ~$15k/yr) — user's call.
+
+## Strategic audit — Gemini, post-realism (2026-05-31)
+
+- **Verdict:** ~0.42 excess-Sharpe IS the academic momentum truth. Valid LAB, not a deployable
+  system. Continue, but to measure *better alpha*, not to keep tuning.
+- **Ranking: (b) PiT index constituents → (d) lengthen history to 2010 → (a) quality factor.**
+- **DITCH the regime gate (#20), don't rebuild:** monthly bars are too slow for dynamic
+  market-timing → it's a whipsaw generator. Handle risk via portfolio construction
+  (quality + vol-targeting), not a binary timing switch. (Our redesigned gate stays in the
+  code as optional/off; stop relying on it.)
+- **Data Cost Ceiling = most likely reason this never deploys.** Free bhavcopy + Yahoo is too
+  noisy for real capital; true PiT constituents + point-in-time fundamentals + clean CA maps
+  mean CMIE Prowess / Refinitiv / Bloomberg (~$15k/yr). DECISION NEEDED: research lab on free
+  data, or commit to paid data before any live trade.
+
+22. **[HIGH] Lower-circuit / liquidity-wall execution (Gemini).** Backtester assumes sells fill
+   at next-bar price, but Indian momentum mid/small-caps hit lower-circuit limits where
+   liquidity vanishes — you're trapped, eating the gap-down. TEST: scan the execution ledger;
+   for every sell/reduce, cross-ref bhavcopy — if exit recorded on a circuit-locked day or
+   order > ~20% of daily volume, the backtest is hallucinating liquidity. Will compress 0.42.
+
 ## Open issues — Gemini red-team audit (2026-05-31)
 
 14. ~~**[HIGH — both AIs' #1 priority] Execution-price simultaneity / look-ahead.**~~ ✅ FIXED
