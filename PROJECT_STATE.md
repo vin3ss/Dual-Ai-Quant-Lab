@@ -34,7 +34,7 @@ almost always hides a leak. The critic's job is to find it before capital does.
 | alpha | `fundamental/quality.py` | ✅ implemented | ROE + accruals + earnings stability |
 | alpha | `regime/__init__.py` | ✅ implemented + refined | per-date multiplier [0,1]; macro overlay refinement pending (issue #6) |
 | alpha | `sentiment/` | 🔴 stub | earnings-call / news NLP |
-| alpha | `macro/` | 🔴 stub | RBI/CPI tilts |
+| alpha | `macro/` | ✅ implemented (sector tilt) | repo/CPI/IIP → sector tilt; neutral when absent; see issues #9, #10 |
 | alpha | `options/` | ✅ implemented (overlay) | PCR/FII-deriv → bounded [-1,1] conviction; neutral when absent |
 | portfolio | `portfolio/constructor.py` | ✅ implemented | signal blend → top-quantile weights |
 | risk | `risk/manager.py` | ✅ implemented | caps + vol target + DD de-risk + `apply_regime` hook |
@@ -89,6 +89,20 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    proven alpha — validate by regime and expiry bucket. Data-bias risks: stale EOD
    snapshots, expiry rolls, vendor-cleaned OI, illiquid single-stock options.
 
+## Open issues — Macro signal
+
+9. **[MED] Macro data can leak via revisions / reference-period confusion (ChatGPT).**
+   `data.macro` must be indexed by release/availability date, not reference month. CPI/IIP
+   revisions, RBI event timing, and month-end resampling can all create look-ahead unless
+   handled by a proper release calendar.
+10. **[MED→HIGH] Macro tilt is annihilated by sector-neutralization (Claude, verified).**
+   Macro emits a *uniform per-sector* tilt, but `PortfolioConstructor.to_weights` with the
+   default `sector_neutral=True` demeans within each sector — which zeroes the macro
+   contribution entirely (probe confirmed: collapses to 0). Fix: apply macro as a
+   *sector-allocation overlay* in the portfolio/risk layer (tilt sector budgets), NOT as a
+   cross-sectional name score that gets sector-demeaned; or explicitly exempt macro from
+   neutralization. Until fixed, do not rely on macro in a sector-neutral configuration.
+
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
@@ -100,8 +114,9 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 4. ~~**Honest cost & capacity**~~ ✅ DONE (2026-05-31). Itemized per-side cost model
    (STT/exchange/SEBI/GST/stamp), nonlinear ADV-participation impact, capacity cap that
    clips oversized trades; `volume` added to MarketData + loader. New issue #7 logged.
-5. **Fill remaining signals** — ✅ options flow DONE (overlay). Remaining: macro tilts,
-   sentiment (earnings-call/news NLP). ← NEXT: macro
+5. **Fill remaining signals** — ✅ options flow DONE (overlay); ✅ macro DONE (sector tilt,
+   issues #9/#10). Remaining: sentiment (earnings-call/news NLP). ← NEXT: sentiment
+   (then address issue #10: wire macro as a sector-budget overlay, not a demeaned score)
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 
