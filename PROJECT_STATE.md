@@ -41,6 +41,7 @@ almost always hides a leak. The critic's job is to find it before capital does.
 | execution | `execution/__init__.py` | 🔴 stub | target broker: Paytm Money Open API (`pyPMClient`) |
 | backtest | `backtest/engine.py` | ✅ implemented | vectorized, shift(1) anti-leakage; now itemized costs + impact + capacity cap |
 | backtest | `backtest/costs.py` | ✅ implemented | per-side STT/exchange/SEBI/GST/stamp; ADV-participation impact; capacity clipping |
+| backtest | `backtest/validation.py` | ✅ implemented | walk-forward, holdout, regime stress, param sensitivity; see issues #12, #13 |
 | data | `data/market_data.py` | ✅ synthetic | `make_synthetic_data` for offline demo/tests |
 | data | `data/loaders.py` | 🟡 CSV/bhavcopy works; live adapters lazy | `load_universe()`; point-in-time + survivorship guards; nsepython/nsefin adapters are `NotImplementedError` pending schema validation |
 
@@ -112,6 +113,19 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    be vendor/model-revised after the fact. (Minor: panel columns are upper-cased — relies on
    the loader's upper-cased tickers to align; mixed-case universes would mismatch.)
 
+## Open issues — Validation harness
+
+12. **[HIGH] Validation can still overstate robustness (ChatGPT).** Walk-forward windows may
+   overlap; repeated grid searches introduce multiple-testing bias; stress windows can be
+   cherry-picked; OOS gets contaminated if reused for design decisions. Keep a final
+   untouched holdout and log every parameter search.
+13. **[HIGH] Walk-forward windows have no lookback buffer (Claude, verified).** `_slice_data`
+   slices each train/test window to exactly [start,end], so a signal needing N bars of
+   history (12-month momentum, regime warmup) starts each window all-NaN — real strategies
+   would be crippled/degraded in walk-forward even though the harness "passes" with the
+   pick-a-ticker test fn. Fix: prepend a `lookback` buffer of history to each window's data
+   for signal computation, then evaluate/score only on the true test slice.
+
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
@@ -126,8 +140,12 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 5. ~~**Fill remaining signals**~~ ✅ DONE — options (overlay), macro (sector tilt), sentiment
    all implemented + tested. Core signal set complete.
 5b. ~~**Fix issue #10**~~ ✅ DONE — `apply_sector_tilt` sector-budget overlay.
-6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
-   The thing that separates a real edge from a curve-fit. ← NEXT
+6. ~~**Validation harness**~~ ✅ DONE — walk-forward, holdout, regime stress, param
+   sensitivity (issues #12, #13 to harden). Engine core build-out complete.
+7. **Connect real data + paper→live** — wire live nsepython/nsefin adapters, source
+   point-in-time constituents/fundamentals, then paper trade, then live via Paytm Money
+   `pyPMClient` behind a human-confirm switch. Also fix #13 (lookback buffer) before
+   trusting walk-forward on real signals. ← NEXT
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 
