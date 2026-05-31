@@ -35,7 +35,7 @@ almost always hides a leak. The critic's job is to find it before capital does.
 | alpha | `regime/__init__.py` | ✅ implemented + refined | per-date multiplier [0,1]; macro overlay refinement pending (issue #6) |
 | alpha | `sentiment/` | 🔴 stub | earnings-call / news NLP |
 | alpha | `macro/` | 🔴 stub | RBI/CPI tilts |
-| alpha | `options/` | 🔴 stub | OI / PCR / FII-deriv overlay |
+| alpha | `options/` | ✅ implemented (overlay) | PCR/FII-deriv → bounded [-1,1] conviction; neutral when absent |
 | portfolio | `portfolio/constructor.py` | ✅ implemented | signal blend → top-quantile weights |
 | risk | `risk/manager.py` | ✅ implemented | caps + vol target + DD de-risk + `apply_regime` hook |
 | execution | `execution/__init__.py` | 🔴 stub | target broker: Paytm Money Open API (`pyPMClient`) |
@@ -89,7 +89,8 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 4. ~~**Honest cost & capacity**~~ ✅ DONE (2026-05-31). Itemized per-side cost model
    (STT/exchange/SEBI/GST/stamp), nonlinear ADV-participation impact, capacity cap that
    clips oversized trades; `volume` added to MarketData + loader. New issue #7 logged.
-5. **Fill remaining signals** — options flow, sentiment, macro (each critiqued). ← NEXT
+5. **Fill remaining signals** — ✅ options flow DONE (overlay). Remaining: macro tilts,
+   sentiment (earnings-call/news NLP). ← NEXT: macro
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 
