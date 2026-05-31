@@ -41,6 +41,13 @@ class CostModel:
     # Notional capital used for capacity/ADV checks.
     portfolio_value: float = 1_000_000.0
 
+    # Execution timing.
+    # 0 preserves the historical engine behavior:
+    # weights decided at close(t) are applied from close(t)->close(t+1).
+    # 1 is stricter next-bar execution:
+    # weights decided at close(t) fill at next bar and start earning after that.
+    execution_lag_bars: int = 0
+
 
 @dataclass
 class RiskConfig:

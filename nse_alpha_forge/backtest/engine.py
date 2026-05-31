@@ -60,12 +60,19 @@ class Backtester:
         # Reconstruct the actually-executable weight path after capacity clipping.
         executable_weights = clipped_delta.cumsum().reindex_like(weights).fillna(0.0)
 
-        # weights at t applied to returns over next period -> shift(1)
-        applied_exec = executable_weights.shift(1).fillna(0.0)
+        execution_lag = int(getattr(self.cfg.cost, "execution_lag_bars", 0))
+        if execution_lag < 0:
+            raise ValueError("execution_lag_bars must be >= 0")
+
+        # Base shift(1): weights decided at date t are not applied to return indexed t.
+        # Extra execution_lag_bars:
+        #   0 = legacy close(t) fill / earn close(t)->close(t+1)
+        #   1 = next-bar fill / earn only after that next bar (no same-close look-ahead)
+        applied_exec = executable_weights.shift(1 + execution_lag).fillna(0.0)
         gross_ret = (applied_exec * returns).sum(axis=1)
 
-        turnover = clipped_delta.abs().sum(axis=1)
-        cost_drag = costs.total.reindex(gross_ret.index).fillna(0.0)
+        turnover = clipped_delta.abs().sum(axis=1).shift(execution_lag).fillna(0.0)
+        cost_drag = costs.total.shift(execution_lag).reindex(gross_ret.index).fillna(0.0)
 
         net_ret = gross_ret - cost_drag
         equity = (1 + net_ret).cumprod()

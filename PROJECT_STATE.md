@@ -109,7 +109,10 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 
 ## Open issues — Gemini red-team audit (2026-05-31)
 
-14. **[HIGH — both AIs' #1 priority] Execution-price simultaneity / look-ahead.** Backtest earns close(t-1)→close(t) on
+14. ~~**[HIGH — both AIs' #1 priority] Execution-price simultaneity / look-ahead.**~~ ✅ FIXED
+   (2026-05-31). Added `CostModel.execution_lag_bars` (next-bar execution); `run_real_validation`
+   now defaults to lag=1. **Measured impact: WF Sharpe 0.83 → 0.66** (removing the same-close
+   look-ahead). This is the new honest number for adjusted+survivorship-free+liquid momentum. Backtest earns close(t-1)→close(t) on
    weights decided at close(t-1) — i.e. signal and execution at the same close, which isn't
    tradable (NSE close is a 3:00–3:30 VWAP). Should execute at next open/VWAP. Bias real but
    smaller on monthly bars; Gemini's "3-5% CAGR" is an estimate, unverified. Add an

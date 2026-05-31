@@ -115,6 +115,7 @@ def main() -> None:
     args = ap.parse_args()
 
     cfg = Config()
+    cfg.cost.execution_lag_bars = 1  # honest next-bar execution (no same-close look-ahead, #14)
     data = _load_yahoo(Path(args.data_dir) / "yahoo") if args.yahoo else _load(Path(args.data_dir))
     n = len(data.prices.index)
     strategy = make_strategy(cfg)
