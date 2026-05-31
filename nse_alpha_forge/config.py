@@ -6,17 +6,40 @@ from dataclasses import dataclass, field
 
 @dataclass
 class CostModel:
-    """Round-trip Indian equity transaction costs, in fraction of traded value.
+    """Indian cash-equity cost model.
 
-    These are illustrative defaults — calibrate to your broker and segment.
+    All rates are fractions of traded notional.
+    Defaults are research approximations; validate against broker/NSE/SEBI circulars
+    before publishing/live use.
     """
-    brokerage: float = 0.0003        # 0.03% (discount broker, capped in practice)
-    stt: float = 0.001               # securities transaction tax (delivery sell side)
-    exchange_txn: float = 0.0000325  # NSE transaction charge
-    gst: float = 0.18                # GST on (brokerage + exchange charges)
-    stamp_duty: float = 0.00015      # buy side
-    # Impact cost is size-dependent; modeled separately in backtest.costs
-    base_impact_bps: float = 5.0     # bps of additional slippage at low participation
+    brokerage: float = 0.0003
+
+    # Equity delivery STT: 0.1% on buy and sell.
+    stt_buy: float = 0.001
+    stt_sell: float = 0.001
+
+    # NSE cash-market transaction charge approximation.
+    exchange_txn: float = 0.0000325
+
+    # SEBI turnover fee approximation: ₹10 / crore = 0.0001%.
+    sebi_turnover: float = 0.000001
+
+    # GST on brokerage + exchange + SEBI charges.
+    gst: float = 0.18
+
+    # Stamp duty: equity delivery buy side.
+    stamp_duty_buy: float = 0.00015
+    stamp_duty_sell: float = 0.0
+
+    # Market impact / capacity.
+    base_impact_bps: float = 2.0
+    impact_coefficient_bps: float = 20.0
+    impact_exponent: float = 1.5
+    adv_window: int = 20
+    max_adv_participation: float = 0.10
+
+    # Notional capital used for capacity/ADV checks.
+    portfolio_value: float = 1_000_000.0
 
 
 @dataclass

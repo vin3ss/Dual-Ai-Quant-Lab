@@ -39,7 +39,8 @@ almost always hides a leak. The critic's job is to find it before capital does.
 | portfolio | `portfolio/constructor.py` | ✅ implemented | signal blend → top-quantile weights |
 | risk | `risk/manager.py` | ✅ implemented | caps + vol target + DD de-risk + `apply_regime` hook |
 | execution | `execution/__init__.py` | 🔴 stub | target broker: Paytm Money Open API (`pyPMClient`) |
-| backtest | `backtest/engine.py` | ✅ implemented | vectorized, Indian cost model, shift(1) anti-leakage |
+| backtest | `backtest/engine.py` | ✅ implemented | vectorized, shift(1) anti-leakage; now itemized costs + impact + capacity cap |
+| backtest | `backtest/costs.py` | ✅ implemented | per-side STT/exchange/SEBI/GST/stamp; ADV-participation impact; capacity clipping |
 | data | `data/market_data.py` | ✅ synthetic | `make_synthetic_data` for offline demo/tests |
 | data | `data/loaders.py` | 🟡 CSV/bhavcopy works; live adapters lazy | `load_universe()`; point-in-time + survivorship guards; nsepython/nsefin adapters are `NotImplementedError` pending schema validation |
 
@@ -67,6 +68,16 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 5. **[LOW] `prices.iloc[0]` base.** NaN at t0 drops a ticker for all history → survivorship
    vector. Fix: normalize by first valid value per column, or build index from returns.
 
+## Open issues — Cost / capacity model
+
+7. **[MED] Coarse capacity on monthly bars + unmodeled frictions (NEW, 2026-05-31).**
+   With monthly resampling, "ADV" is the mean of ~20 *monthly* dollar-volume bars, not a
+   true daily ADV, so participation/capacity are approximate; they become realistic only
+   on daily data. Also still NOT modeled (per ChatGPT, kept as explicit caveats in
+   `costs.py`): bid-ask spread, open/close auction liquidity, order-book depth, liquidity
+   droughts in crashes, partial fills (approximated as clipping), and tax on realised
+   gains. Treat backtest costs as a *floor*, not the truth. Revisit when daily data lands.
+
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
@@ -75,8 +86,10 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    point-in-time + survivorship guards, parquet cache). Remaining: wire the live
    `nsepython`/`nsefin` adapters (currently lazy stubs) once their schema is validated,
    and source a real point-in-time constituent + fundamentals dataset.
-4. **Honest cost & capacity** — validate Indian cost model, add ADV/liquidity limits. ← NEXT
-5. **Fill remaining signals** — options flow, sentiment, macro (each critiqued).
+4. ~~**Honest cost & capacity**~~ ✅ DONE (2026-05-31). Itemized per-side cost model
+   (STT/exchange/SEBI/GST/stamp), nonlinear ADV-participation impact, capacity cap that
+   clips oversized trades; `volume` added to MarketData + loader. New issue #7 logged.
+5. **Fill remaining signals** — options flow, sentiment, macro (each critiqued). ← NEXT
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 

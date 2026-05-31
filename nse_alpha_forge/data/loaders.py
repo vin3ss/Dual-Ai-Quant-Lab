@@ -98,6 +98,7 @@ def load_universe(
     )
 
     sectors = _load_sectors(cfg.sectors_path, prices.columns)
+    volume = _build_volume(raw_prices)
 
     fundamentals = _load_fundamentals(
         cfg.fundamentals_path,
@@ -129,6 +130,10 @@ def load_universe(
         if fii_deriv is not None:
             fii_deriv = fii_deriv.resample(cfg.resample).last()
             fii_deriv.index.freq = None
+        if volume is not None:
+            # Volume aggregates over the period (sum), unlike price (last).
+            volume = volume.resample(cfg.resample).sum()
+            volume.index.freq = None
 
     data = MarketData(
         prices=prices,
@@ -137,6 +142,7 @@ def load_universe(
         option_chain=option_chain,
         fii_deriv=fii_deriv,
         macro=macro,
+        volume=volume,
     )
 
     if cfg.use_cache:
@@ -172,6 +178,10 @@ def _load_bhavcopy_csv(
             "close_price": "close",
             "adj_close": "adj_close",
             "adjusted_close": "adj_close",
+            "volume": "volume",
+            "ttl_trd_qnty": "volume",
+            "total_traded_quantity": "volume",
+            "shares_traded": "volume",
         }
         df = df.rename(columns={c: rename.get(c, c) for c in df.columns})
 
@@ -275,6 +285,17 @@ def _build_adjusted_close(
     )
 
     return adjusted
+
+
+def _build_volume(raw_prices: pd.DataFrame) -> pd.DataFrame | None:
+    if "volume" not in raw_prices.columns:
+        return None
+    return (
+        raw_prices
+        .pivot(index="date", columns="symbol", values="volume")
+        .sort_index()
+        .astype(float)
+    )
 
 
 def _load_sectors(path: Path | None, tickers: pd.Index) -> pd.Series:
@@ -471,6 +492,8 @@ def _write_marketdata_cache(path: Path, data: MarketData) -> None:
     if data.fii_deriv is not None:
         add_frame("fii_deriv", data.fii_deriv)
 
+    add_frame("volume", data.volume)
+
     cache = pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
     cache.to_parquet(path, index=False)
 
@@ -513,4 +536,5 @@ def _read_marketdata_cache(path: Path) -> MarketData:
         macro=get_component("macro", columns_name=None),
         option_chain=get_component("option_chain", columns_name="symbol"),
         fii_deriv=get_component("fii_deriv", columns_name="symbol"),
+        volume=get_component("volume", columns_name="symbol"),
     )

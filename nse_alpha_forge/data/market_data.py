@@ -19,6 +19,7 @@ class MarketData:
     fii_deriv: pd.DataFrame | None = None
     macro: pd.DataFrame | None = None
     news: pd.DataFrame | None = None
+    volume: pd.DataFrame | None = None           # date x ticker shares traded
 
     def returns(self) -> pd.DataFrame:
         return self.prices.pct_change()

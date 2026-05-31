@@ -11,7 +11,7 @@ import pandas as pd
 import numpy as np
 
 from ..config import Config
-from .costs import round_trip_cost
+from .costs import transaction_costs
 
 
 @dataclass
@@ -20,6 +20,7 @@ class BacktestResult:
     returns: pd.Series
     turnover: pd.Series
     stats: dict
+    cost_breakdown: object | None = None
 
     def summary(self) -> str:
         s = self.stats
@@ -37,23 +38,48 @@ class Backtester:
     def __init__(self, cfg: Config):
         self.cfg = cfg
 
-    def run(self, weights: pd.DataFrame, returns: pd.DataFrame) -> BacktestResult:
+    def run(
+        self,
+        weights: pd.DataFrame,
+        returns: pd.DataFrame,
+        prices: pd.DataFrame | None = None,
+        volume: pd.DataFrame | None = None,
+    ) -> BacktestResult:
         weights = weights.reindex(columns=returns.columns).fillna(0.0)
 
+        desired_delta = weights.diff().fillna(weights)
+        clipped_delta, costs = transaction_costs(
+            delta_weights=desired_delta,
+            cost=self.cfg.cost,
+            prices=prices,
+            volume=volume,
+            portfolio_value=self.cfg.cost.portfolio_value,
+            clip_to_capacity=True,
+        )
+
+        # Reconstruct the actually-executable weight path after capacity clipping.
+        executable_weights = clipped_delta.cumsum().reindex_like(weights).fillna(0.0)
+
         # weights at t applied to returns over next period -> shift(1)
-        applied = weights.shift(1).fillna(0.0)
-        gross_ret = (applied * returns).sum(axis=1)
+        applied_exec = executable_weights.shift(1).fillna(0.0)
+        gross_ret = (applied_exec * returns).sum(axis=1)
 
-        # turnover & costs charged at the period weights change
-        turnover = weights.diff().abs().sum(axis=1).fillna(weights.abs().sum(axis=1))
-        per_unit_cost = round_trip_cost(self.cfg.cost)
-        cost_drag = turnover * per_unit_cost
+        turnover = clipped_delta.abs().sum(axis=1)
+        cost_drag = costs.total.reindex(gross_ret.index).fillna(0.0)
 
-        net_ret = gross_ret - cost_drag.reindex(gross_ret.index).fillna(0.0)
+        net_ret = gross_ret - cost_drag
         equity = (1 + net_ret).cumprod()
 
         stats = self._stats(net_ret, equity, turnover)
-        return BacktestResult(equity, net_ret, turnover, stats)
+        stats["avg_explicit_cost"] = costs.explicit.mean()
+        stats["avg_impact_cost"] = costs.impact.mean()
+        stats["capacity_clips"] = (
+            int(costs.clipped_trades.sum().sum())
+            if costs.clipped_trades is not None
+            else 0
+        )
+
+        return BacktestResult(equity, net_ret, turnover, stats, costs)
 
     def _stats(self, ret: pd.Series, equity: pd.Series,
                turnover: pd.Series) -> dict:
