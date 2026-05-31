@@ -1,22 +1,21 @@
-# Secrets — never commit
-agents/.env
-.env
-*.key
-
-# Python
-__pycache__/
-*.py[cod]
-*.egg-info/
-.venv/
-venv/
-.ipynb_checkpoints/
 
 # Agent + backtest outputs
-agents/outputs/
+# OS
+# Python
+# Secrets — never commit
+*.egg-info/
+*.key
+*.py[cod]
+.DS_Store
+.cache/
+.env
+.ipynb_checkpoints/
+.venv/
 Backtests/*.csv
 Backtests/*.png
 Models/*.pkl
 Models/*.pt
-
-# OS
-.DS_Store
+__pycache__/
+agents/.env
+agents/outputs/
+venv/

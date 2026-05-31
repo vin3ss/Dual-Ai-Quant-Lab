@@ -40,7 +40,8 @@ almost always hides a leak. The critic's job is to find it before capital does.
 | risk | `risk/manager.py` | ✅ implemented | caps + vol target + DD de-risk + `apply_regime` hook |
 | execution | `execution/__init__.py` | 🔴 stub | target broker: Paytm Money Open API (`pyPMClient`) |
 | backtest | `backtest/engine.py` | ✅ implemented | vectorized, Indian cost model, shift(1) anti-leakage |
-| data | `data/market_data.py` | ✅ synthetic only | real data (nsefin/bhavcopy) not yet connected |
+| data | `data/market_data.py` | ✅ synthetic | `make_synthetic_data` for offline demo/tests |
+| data | `data/loaders.py` | 🟡 CSV/bhavcopy works; live adapters lazy | `load_universe()`; point-in-time + survivorship guards; nsepython/nsefin adapters are `NotImplementedError` pending schema validation |
 
 Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 
@@ -70,8 +71,11 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
 2. ~~**Refine RegimeDetector** per open issues 1–3, 5.~~ ✅ DONE (2026-05-31). New issue #6 logged.
-3. **Connect real data** (`nsefin` / bhavcopy) — replace synthetic; enforce point-in-time. ← NEXT
-4. **Honest cost & capacity** — validate Indian cost model, add ADV/liquidity limits.
+3. **Connect real data** — 🟡 loader framework DONE (`load_universe`, CSV/bhavcopy path,
+   point-in-time + survivorship guards, parquet cache). Remaining: wire the live
+   `nsepython`/`nsefin` adapters (currently lazy stubs) once their schema is validated,
+   and source a real point-in-time constituent + fundamentals dataset.
+4. **Honest cost & capacity** — validate Indian cost model, add ADV/liquidity limits. ← NEXT
 5. **Fill remaining signals** — options flow, sentiment, macro (each critiqued).
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
