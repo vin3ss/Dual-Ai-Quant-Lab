@@ -19,3 +19,8 @@ __pycache__/
 agents/.env
 agents/outputs/
 venv/
+
+# real data drops & generated reports
+data_in/*
+!data_in/README.md
+Reports/*.md
