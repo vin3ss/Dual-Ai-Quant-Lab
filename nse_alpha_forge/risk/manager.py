@@ -62,3 +62,89 @@ class RiskManager:
             raise ValueError("regime multiplier must lie in [0, 1]")
 
         return weights.mul(aligned, axis=0)
+
+    def capacity_aware_targets(
+        self,
+        target_weights: pd.DataFrame,
+        prices: pd.DataFrame,
+        volume: pd.DataFrame,
+        portfolio_value: float,
+        max_adv_participation: float,
+        candidate_scores: pd.DataFrame | None = None,
+        adv_window: int = 20,
+        max_passes: int = 5,
+    ) -> pd.DataFrame:
+        """Resize target weights so rebalance trades respect ADV capacity (#15).
+
+        Long-only path: clip each name's rebalance delta to its trailing-ADV trade
+        capacity, then redistribute clipped BUY capital to the next eligible names
+        by score so intentional gross exposure is preserved when the universe can
+        absorb it. Cash is left only when the whole universe is capacity-bound.
+        Point-in-time: ADV at t uses history through t-1 only.
+        """
+        if prices is None or volume is None:
+            return target_weights
+        if portfolio_value <= 0:
+            raise ValueError("portfolio_value must be > 0")
+        if max_adv_participation <= 0:
+            raise ValueError("max_adv_participation must be > 0")
+
+        weights = target_weights.reindex(columns=prices.columns).fillna(0.0).copy()
+        prices = prices.reindex_like(weights).astype(float)
+        volume = volume.reindex_like(weights).astype(float)
+
+        dollar_volume = prices * volume
+        adv = (dollar_volume.rolling(adv_window, min_periods=max(1, adv_window // 3))
+               .mean().shift(1))
+
+        max_trade_weight = (adv * max_adv_participation / portfolio_value) \
+            .replace([np.inf, -np.inf], np.nan).fillna(0.0)
+
+        if candidate_scores is not None:
+            scores = candidate_scores.reindex_like(weights).fillna(-np.inf)
+        else:
+            scores = weights.where(weights > 0, -np.inf)
+
+        out = pd.DataFrame(0.0, index=weights.index, columns=weights.columns)
+        prev = pd.Series(0.0, index=weights.columns)
+
+        for dt in weights.index:
+            desired = weights.loc[dt].clip(lower=0.0)
+            cap = max_trade_weight.loc[dt].clip(lower=0.0)
+            score = scores.loc[dt]
+
+            delta = desired - prev
+            clipped_delta = delta.clip(lower=-cap, upper=cap)
+            current = (prev + clipped_delta).clip(lower=0.0)
+
+            target_gross = desired.abs().sum()
+            missing = max(target_gross - current.abs().sum(), 0.0)
+
+            for _ in range(max_passes):
+                if missing <= 1e-12:
+                    break
+                remaining_buy_cap = (prev + cap - current).clip(lower=0.0)
+                eligible = remaining_buy_cap[
+                    (remaining_buy_cap > 1e-12)
+                    & score.replace([np.inf, -np.inf], np.nan).notna()
+                ]
+                if eligible.empty:
+                    break
+                order = score.loc[eligible.index].sort_values(ascending=False).index
+                allocated = 0.0
+                for name in order:
+                    add = min(missing - allocated, remaining_buy_cap.loc[name])
+                    if add <= 0:
+                        continue
+                    current.loc[name] += add
+                    allocated += add
+                    if allocated >= missing - 1e-12:
+                        break
+                if allocated <= 1e-12:
+                    break
+                missing -= allocated
+
+            out.loc[dt] = current
+            prev = current
+
+        return out

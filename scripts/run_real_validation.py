@@ -69,6 +69,15 @@ def make_strategy(cfg: Config):
                     weights, MacroSignal().compute(data), data.sectors,
                     strength=p.get("macro_strength", 0.25),
                 )
+
+            # Capacity-aware sizing (#15): redistribute capacity-clipped capital to the
+            # next eligible names by score, so executed exposure tracks intent.
+            weights = rm.capacity_aware_targets(
+                target_weights=weights, prices=data.prices, volume=data.volume,
+                portfolio_value=cfg.cost.portfolio_value,
+                max_adv_participation=cfg.cost.max_adv_participation,
+                candidate_scores=composite, adv_window=cfg.cost.adv_window,
+            )
         return weights
 
     return strategy_weights

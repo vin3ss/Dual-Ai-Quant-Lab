@@ -70,6 +70,8 @@ class Backtester:
         #   1 = next-bar fill / earn only after that next bar (no same-close look-ahead)
         applied_exec = executable_weights.shift(1 + execution_lag).fillna(0.0)
 
+        target_exposure = weights.abs().sum(axis=1)
+        executed_exposure = executable_weights.abs().sum(axis=1)
         invested = applied_exec.abs().sum(axis=1).clip(lower=0.0)
         idle_cash = (1.0 - invested).clip(lower=0.0)
 
@@ -90,6 +92,13 @@ class Backtester:
         stats["avg_invested"] = invested.mean()
         stats["avg_idle_cash"] = idle_cash.mean()
         stats["rf_period"] = rf_period
+        stats["avg_target_exposure"] = target_exposure.mean()
+        stats["avg_executed_exposure"] = executed_exposure.mean()
+        stats["avg_applied_exposure"] = invested.mean()
+        stats["avg_exposure_gap"] = (
+            target_exposure.reindex(executed_exposure.index).fillna(0.0)
+            - executed_exposure
+        ).mean()
         stats["avg_explicit_cost"] = costs.explicit.mean()
         stats["avg_impact_cost"] = costs.impact.mean()
         stats["capacity_clips"] = (

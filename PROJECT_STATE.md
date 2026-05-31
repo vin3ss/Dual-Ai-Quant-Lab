@@ -117,10 +117,24 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    tradable (NSE close is a 3:00–3:30 VWAP). Should execute at next open/VWAP. Bias real but
    smaller on monthly bars; Gemini's "3-5% CAGR" is an estimate, unverified. Add an
    execution-lag / next-open option to the engine.
-15. **[HIGH] Vol-target ↔ capacity decoupling.** RiskManager sizes for a vol target, then the
-   backtest clips trades to ADV capacity and the overflow silently becomes cash → realized
-   exposure/vol decouples from target. Fix: make capacity-aware sizing (redistribute clipped
-   capital to next names) or at least recompute/report realized exposure after clipping.
+15. ~~**[HIGH] Vol-target ↔ capacity decoupling.**~~ ✅ FIXED (2026-05-31) —
+   `RiskManager.capacity_aware_targets`: clips each rebalance delta to trailing-ADV capacity
+   and REDISTRIBUTES clipped buy capital to the next eligible names by score, so executed
+   exposure tracks intent instead of leaking to cash. Engine now reports target vs executed
+   vs applied exposure + exposure gap. Wired into validation. Effect: CAGR 3.6%→8.5% (more
+   capital actually deployed), regime-thirds all positive (2.10/1.06/0.66), WF excess-Sharpe
+   steady ~0.42. +3 tests.
+
+## ✅ REALISM PHASE COMPLETE (2026-05-31) — engine no longer flatters results
+
+All three realism fixes done (#14 next-bar execution, #17 cash yield + excess-Sharpe, #15
+capacity-aware sizing). **Definitive honest verdict: NSE 12-1 momentum = WF OOS excess-Sharpe
+~0.42, CAGR ~8.5%, MaxDD ~6%** on adjusted + survivorship-free + liquid + capacity-aware,
+look-ahead-free data. A real but MODEST factor — matches Gemini's 0.4-0.5 call. Honest arc:
+0.83 (optimistic) → 0.66 (no look-ahead) → 0.42 (excess-Sharpe, no cash mirage). Single 70/30
+holdout still ~0 OOS (deploying into the recent drawdown), but regime-thirds now all positive.
+Still NOT deployable: thin sample (~5 WF windows / 1 macro cycle), liquidity-defined (not
+index) universe (#21), regime gate whipsaws (#20).
 16. **[HIGH] Bhavcopy "Top-N" survivorship.** Deriving the universe from daily bhavcopy by
    turnover/mcap is itself a look-ahead filter (drops crashing names pre-crash). Reinforces
    the step-7 requirement: source a true point-in-time index-constituent list; don't derive
