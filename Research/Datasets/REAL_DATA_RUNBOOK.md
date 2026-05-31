@@ -62,6 +62,17 @@ to true index membership automatically. Two accepted formats:
   uses the most recent snapshot ≤ each backtest date.
 - **Interval:** `symbol,start_date,end_date` — membership windows (blank `end_date` = still in).
 
+**Tooling:** `scripts/build_constituents.py` assembles a best-effort `constituents.csv` by
+walking BACKWARD from the current NSE constituent list through reconstitution events you
+curate in `data_in/index_events.csv` (`effective_date,add_symbol,remove_symbol,source`).
+Symbol renames/mergers go in `data_in/symbol_aliases.csv` (`old_symbol,new_symbol`). Run:
+```bash
+python -m scripts.build_constituents --index NIFTY500 --min-date 2019-01-01
+```
+The irreducible manual step is curating `index_events.csv` from NSE/NiftyIndices semi-annual
+reconstitution circulars (Jan/Jul cut-offs). Without events it emits only the current
+(survivorship-biased) baseline.
+
 **Sourcing reality (researched 2026-05-31):** there is NO clean, free, point-in-time
 Nifty-500 membership dataset. Free sources give only *current* constituents + price history.
 True reconstitution history must be either (a) assembled by hand from NSE/niftyindices
