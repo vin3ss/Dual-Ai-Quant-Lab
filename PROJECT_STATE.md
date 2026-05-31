@@ -163,7 +163,16 @@ sparse universe no longer fabricates returns across gaps.)
 WORSE (IS 1.17 → OOS -0.09, WF Sharpe 0.38), confirming the earlier positive was microcap
 noise.
 
-**Update — HONEST run: survivorship-free bhavcopy + corporate-action adjusted (2026-05-31).**
+**DEFINITIVE run (2026-05-31): full CA adjustment (439 actions/215 symbols) + survivorship-free
+bhavcopy + liquid universe → WF OOS Sharpe ~0.83** (CAGR 4.8%, MaxDD 7.6%; regime thirds
+1.38/1.33/-0.05; holdout IS 1.26→OOS 0.37). Honest verdict: **NSE 12-1 momentum is a real,
+moderate factor (~0.8 WF Sharpe), strong 2019-2023, in drawdown since 2024.** Treat as an
+optimistic ceiling — engine realism issues #14/#15/#17 still unmodeled (will pull toward
+~0.5-0.7); universe is liquidity-defined PiT, not true index membership. Arc:
+raw 0.77(noise) → liquid-unadj 0.38 → Yahoo survivor-only 1.06(hallucination) →
+survivorship-free+adjusted **0.83**.
+
+**Earlier — partial-adjust run: survivorship-free bhavcopy + corporate-action adjusted (2026-05-31).**
 `scripts/fetch_corporate_actions.py` pulls split/bonus factors (Yahoo split history) into the
 loader's `corporate_actions_path`; applied to the bhavcopy this fixes fake split returns
 WITHOUT dropping dead names (verified: HDFCBANK Aug-25 -52.8% → -5.7%). Run on liquid top-300,
