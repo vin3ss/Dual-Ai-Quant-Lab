@@ -47,6 +47,38 @@ def test_apply_filter_blanks_illiquid():
     assert last[["S0", "S1"]].isna().all()
 
 
+def test_constituent_mask_snapshot_is_point_in_time():
+    from nse_alpha_forge.portfolio.universe import constituent_mask
+    idx = pd.date_range("2024-01-31", periods=4, freq="ME")
+    cols = pd.Index(["A", "B", "C"])
+    # Jan: {A,B}; from Mar reconstitution: {A,C} (B removed, C added)
+    cons = pd.DataFrame({
+        "date": ["2024-01-31", "2024-01-31", "2024-03-31", "2024-03-31"],
+        "symbol": ["A", "B", "A", "C"],
+    })
+    m = constituent_mask(idx, cols, cons)
+    # Jan/Feb use the Jan snapshot
+    assert m.loc[idx[0]].tolist() == [True, True, False]
+    assert m.loc[idx[1]].tolist() == [True, True, False]
+    # Mar onward: B dropped, C added
+    assert m.loc[idx[2]].tolist() == [True, False, True]
+    assert m.loc[idx[3]].tolist() == [True, False, True]
+
+
+def test_constituent_mask_interval_schema():
+    from nse_alpha_forge.portfolio.universe import constituent_mask
+    idx = pd.date_range("2024-01-31", periods=4, freq="ME")
+    cols = pd.Index(["A", "B"])
+    cons = pd.DataFrame({
+        "symbol": ["A", "B"],
+        "start_date": ["2024-01-31", "2024-03-31"],
+        "end_date": ["", ""],  # both still in
+    })
+    m = constituent_mask(idx, cols, cons)
+    assert m.loc[idx[0], "A"] and not m.loc[idx[0], "B"]   # B not in until Mar
+    assert m.loc[idx[3], "B"]                               # B in from Mar
+
+
 def test_no_volume_is_noop():
     prices, _ = _data()
     signal = pd.DataFrame(1.0, index=prices.index, columns=prices.columns)

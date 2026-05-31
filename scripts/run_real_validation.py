@@ -26,7 +26,7 @@ from nse_alpha_forge.alpha.fundamental import QualitySignal
 from nse_alpha_forge.alpha.regime import RegimeDetector
 from nse_alpha_forge.alpha.macro import MacroSignal
 from nse_alpha_forge.portfolio import PortfolioConstructor
-from nse_alpha_forge.portfolio.universe import apply_liquidity_filter
+from nse_alpha_forge.portfolio.universe import apply_liquidity_filter, apply_constituent_filter
 from nse_alpha_forge.risk import RiskManager
 from nse_alpha_forge.backtest import walk_forward, holdout_split, regime_stress
 
@@ -35,8 +35,12 @@ def _has_sectors(data: MarketData) -> bool:
     return bool((data.sectors.astype(str).str.upper() != "UNKNOWN").any())
 
 
-def make_strategy(cfg: Config):
-    """Return a weights_fn(data, params) closing over cfg."""
+def make_strategy(cfg: Config, constituents: pd.DataFrame | None = None):
+    """Return a weights_fn(data, params) closing over cfg.
+
+    If `constituents` (point-in-time index membership) is provided, the universe is
+    the rigid index membership (#21); otherwise it falls back to the liquidity filter.
+    """
 
     def strategy_weights(data: MarketData, params: dict | None = None) -> pd.DataFrame:
         p = params or {}
@@ -52,11 +56,14 @@ def make_strategy(cfg: Config):
 
             pc = PortfolioConstructor(StrategyConfig(sector_neutral=_has_sectors(data)))
             composite = pc.combine(signals)
-            # Restrict to the point-in-time liquid universe (issue #19)
-            composite = apply_liquidity_filter(
-                composite, data.prices, data.volume,
-                top_n=p.get("liq_top_n", 300), lookback=p.get("liq_lookback", 6),
-            )
+            # Universe: rigid PiT index membership (#21) if available, else liquidity filter (#19)
+            if constituents is not None:
+                composite = apply_constituent_filter(composite, constituents)
+            else:
+                composite = apply_liquidity_filter(
+                    composite, data.prices, data.volume,
+                    top_n=p.get("liq_top_n", 300), lookback=p.get("liq_lookback", 6),
+                )
             weights = pc.to_weights(composite, sectors=data.sectors)
 
             rm = RiskManager(cfg.risk)
@@ -127,11 +134,16 @@ def main() -> None:
     cfg.cost.execution_lag_bars = 1  # honest next-bar execution (no same-close look-ahead, #14)
     data = _load_yahoo(Path(args.data_dir) / "yahoo") if args.yahoo else _load(Path(args.data_dir))
     n = len(data.prices.index)
-    strategy = make_strategy(cfg)
+
+    cons_path = Path(args.data_dir) / "constituents.csv"
+    constituents = pd.read_csv(cons_path) if cons_path.exists() else None
+    universe_kind = "PiT index constituents (#21)" if constituents is not None else "liquidity filter (#19)"
+    strategy = make_strategy(cfg, constituents)
 
     lines = ["# Real-Data Validation Report", ""]
     lines.append(f"Universe: {data.prices.shape[1]} tickers, {n} monthly bars "
                  f"({data.prices.index.min().date()} to {data.prices.index.max().date()})")
+    lines.append(f"Universe selection: {universe_kind}")
     lines.append("")
 
     # 1. Holdout IS vs OOS

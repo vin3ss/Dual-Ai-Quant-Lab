@@ -273,6 +273,13 @@ NSE bull run is statistically thin — do NOT deploy capital on it.
    Gemini's mechanism did NOT hold, but it proved the result swings ~0.1 Sharpe on an arbitrary
    universe choice = fragility. Resolution: move to a **rigid external index constituent set**
    (Nifty 500 PiT membership) so universe selection isn't discretionary or price-contaminated.
+   **Status (2026-05-31): MECHANISM BUILT** — `portfolio/universe.py` `constituent_mask` /
+   `apply_constituent_filter` (snapshot `date,symbol` or interval `symbol,start_date,end_date`),
+   wired into `run_real_validation` (uses `data_in/constituents.csv` if present, else liquidity
+   fallback), tested. **DATA IS THE BLOCKER:** confirmed no clean free PiT Nifty-500 membership
+   exists (only current constituents + price history on GitHub/Kaggle; true reconstitution
+   history = assemble from NSE circulars by hand, or paid niftyindices/Prowess). Engine is ready
+   the moment a `constituents.csv` is obtained — that data is now the gating decision.
 
 20. **[HIGH] Regime gate is mis-timed / near-useless on real monthly data (Claude, verified
    2026-05-31).** Inspected the multiplier over the adjusted Yahoo sample: it stayed at 1.00

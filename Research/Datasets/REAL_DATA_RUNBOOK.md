@@ -53,6 +53,22 @@ issues #6–#17 in `PROJECT_STATE.md` list the biases that remain even with real
 (execution-price, capacity/vol decoupling, cash yield, etc.); fix those before trusting
 any backtest number.
 
+## 3b. Point-in-time index constituents (issue #21 — the rigid universe)
+
+Drop a `data_in/constituents.csv` and the validation switches from the liquidity filter
+to true index membership automatically. Two accepted formats:
+
+- **Snapshot:** `date,symbol` — the member list as of each reconstitution date. The engine
+  uses the most recent snapshot ≤ each backtest date.
+- **Interval:** `symbol,start_date,end_date` — membership windows (blank `end_date` = still in).
+
+**Sourcing reality (researched 2026-05-31):** there is NO clean, free, point-in-time
+Nifty-500 membership dataset. Free sources give only *current* constituents + price history.
+True reconstitution history must be either (a) assembled by hand from NSE/niftyindices
+semi-annual reconstitution circulars, or (b) bought (niftyindices historical / CMIE Prowess).
+Until you have this file, the backtest uses the liquidity-defined universe, which carries the
+selection bias documented in issue #21 — treat those results as indicative, not final.
+
 ## 4. Live API (later, on your machine)
 
 `source="nsepython"` / `"nsefin"` adapters are stubs that raise `NotImplementedError`
