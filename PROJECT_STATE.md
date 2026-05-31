@@ -43,7 +43,7 @@ almost always hides a leak. The critic's job is to find it before capital does.
 | backtest | `backtest/costs.py` | ✅ implemented | per-side STT/exchange/SEBI/GST/stamp; ADV-participation impact; capacity clipping |
 | backtest | `backtest/validation.py` | ✅ implemented | walk-forward, holdout, regime stress, param sensitivity; see issues #12, #13 |
 | data | `data/market_data.py` | ✅ synthetic | `make_synthetic_data` for offline demo/tests |
-| data | `data/loaders.py` | 🟡 CSV/bhavcopy works; live adapters lazy | `load_universe()`; point-in-time + survivorship guards; nsepython/nsefin adapters are `NotImplementedError` pending schema validation |
+| data | `data/loaders.py` | 🟡 real bhavcopy CSV works; live adapters lazy | `load_universe()`; now maps real NSE bhavcopy columns (legacy TIMESTAMP/CLOSE/TOTTRDQTY + UDiFF TckrSymb/ClsPric/TtlTradgVol); full pipeline validated end-to-end on bhavcopy-shaped CSV; point-in-time + survivorship guards; nsepython/nsefin adapters still `NotImplementedError`. See `Research/Datasets/REAL_DATA_RUNBOOK.md` |
 
 Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 

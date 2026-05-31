@@ -170,18 +170,32 @@ def _load_bhavcopy_csv(
         df.columns = [c.lower().strip() for c in df.columns]
 
         rename = {
+            # date — legacy bhavcopy (TIMESTAMP), full bhavdata (DATE1), UDiFF (TradDt)
             "timestamp": "date",
             "trad_dt": "date",
+            "traddt": "date",
+            "date1": "date",
+            "date": "date",
+            # symbol — legacy (SYMBOL), UDiFF (TckrSymb)
             "symbol": "symbol",
             "ticker": "symbol",
+            "tckrsymb": "symbol",
+            # close — legacy (CLOSE), full bhavdata (CLOSE_PRICE), UDiFF (ClsPric)
             "close": "close",
             "close_price": "close",
+            "clspric": "close",
             "adj_close": "adj_close",
             "adjusted_close": "adj_close",
+            # volume — legacy (TOTTRDQTY), full bhavdata (TTL_TRD_QNTY), UDiFF (TtlTradgVol)
             "volume": "volume",
             "ttl_trd_qnty": "volume",
+            "tottrdqty": "volume",
             "total_traded_quantity": "volume",
+            "ttltradgvol": "volume",
             "shares_traded": "volume",
+            # series, to allow filtering to EQ if present
+            "series": "series",
+            "sctysrs": "series",
         }
         df = df.rename(columns={c: rename.get(c, c) for c in df.columns})
 
