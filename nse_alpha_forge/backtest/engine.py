@@ -69,15 +69,27 @@ class Backtester:
         #   0 = legacy close(t) fill / earn close(t)->close(t+1)
         #   1 = next-bar fill / earn only after that next bar (no same-close look-ahead)
         applied_exec = executable_weights.shift(1 + execution_lag).fillna(0.0)
+
+        invested = applied_exec.abs().sum(axis=1).clip(lower=0.0)
+        idle_cash = (1.0 - invested).clip(lower=0.0)
+
+        ppy = self._infer_ppy(returns.index)
+        rf_annual = float(getattr(self.cfg.cost, "risk_free_annual", 0.0))
+        rf_period = rf_annual / ppy
+
         gross_ret = (applied_exec * returns).sum(axis=1)
+        cash_ret = idle_cash * rf_period
 
         turnover = clipped_delta.abs().sum(axis=1).shift(execution_lag).fillna(0.0)
         cost_drag = costs.total.shift(execution_lag).reindex(gross_ret.index).fillna(0.0)
 
-        net_ret = gross_ret - cost_drag
+        net_ret = gross_ret + cash_ret - cost_drag
         equity = (1 + net_ret).cumprod()
 
         stats = self._stats(net_ret, equity, turnover)
+        stats["avg_invested"] = invested.mean()
+        stats["avg_idle_cash"] = idle_cash.mean()
+        stats["rf_period"] = rf_period
         stats["avg_explicit_cost"] = costs.explicit.mean()
         stats["avg_impact_cost"] = costs.impact.mean()
         stats["capacity_clips"] = (
@@ -95,7 +107,10 @@ class Backtester:
         ann_factor = periods_per_year
         cagr = equity.iloc[-1] ** (ann_factor / max(n, 1)) - 1 if n else 0.0
         vol = ret.std() * np.sqrt(ann_factor)
-        sharpe = (ret.mean() * ann_factor) / vol if vol else 0.0
+        # Sharpe on EXCESS-over-risk-free returns, so idle-cash yield (#17) cannot
+        # masquerade as skill. A 100%-cash book has ~0 excess Sharpe.
+        rf_period = float(getattr(self.cfg.cost, "risk_free_annual", 0.0)) / periods_per_year
+        sharpe = ((ret.mean() - rf_period) * ann_factor) / vol if vol else 0.0
         dd = 1 - equity / equity.cummax()
         return {
             "cagr": cagr,

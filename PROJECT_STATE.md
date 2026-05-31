@@ -125,7 +125,14 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    turnover/mcap is itself a look-ahead filter (drops crashing names pre-crash). Reinforces
    the step-7 requirement: source a true point-in-time index-constituent list; don't derive
    the universe from bhavcopy alone.
-17. **[MED] Uninvested cash earns 0%.** When regime de-risks to cash, the backtest accrues 0
+17. ~~**[MED] Uninvested cash earns 0%.**~~ ✅ FIXED (2026-05-31) — `CostModel.risk_free_annual`
+   (~6%) accrues on idle capital. **BUT it surfaced a methodology bug:** the book is only ~25%
+   invested (vol-target scales the concentrated momentum book down), so crediting 6% on 75%
+   cash inflated total-return Sharpe to 1.5. Fixed `_stats` to compute **Sharpe on EXCESS-over-
+   risk-free returns**, so cash yield can't masquerade as skill (test added). Honest number
+   after #14+#17: **WF excess-Sharpe ~0.42** (rf=6%) — squarely in Gemini's predicted 0.4-0.5.
+   NOTE for #15: the ~25%-invested figure means vol-target is leaving the book mostly in cash —
+   address in the vol/capacity rework. When regime de-risks to cash, the backtest accrues 0
    on the uninvested fraction, unfairly penalizing the regime detector. Accrue ~RBI
    risk-free (repo, ~6%) on `1 - invested`. This makes results MORE honest (and slightly
    better), so fix before judging regime parameters.

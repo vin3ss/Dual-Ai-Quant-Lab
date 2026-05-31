@@ -48,6 +48,10 @@ class CostModel:
     # weights decided at close(t) fill at next bar and start earning after that.
     execution_lag_bars: int = 0
 
+    # Annual risk-free yield earned on uninvested cash.
+    # Approximation for Indian cash/T-bill/RBI-rate environment; calibrate by date later.
+    risk_free_annual: float = 0.06
+
 
 @dataclass
 class RiskConfig:
