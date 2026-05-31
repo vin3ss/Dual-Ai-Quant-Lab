@@ -320,6 +320,23 @@ NSE bull run is statistically thin — do NOT deploy capital on it.
    earlier mild positive was microcap noise. Tradable-universe momentum shows no OOS edge
    here. (NaN-union survivorship still partly remains; tighten with PiT constituents later.)
 
+## Live decision tools (current-snapshot, NOT backtest) — 2026-05-31
+
+- `scripts/generate_holdings.py` — model's current target book + regime/trend + chart.
+- `scripts/enrich_holdings.py` — top-momentum names enriched with CURRENT yfinance
+  fundamentals (P/E, ROE, margin, D/E) + recent news + crude keyword sentiment. Legitimate
+  for a present-moment decision (today's data for today's choice); MUST NOT enter the
+  backtest (not point-in-time). This is how financial/news/sentiment are usable NOW without
+  the PiT data wall.
+
+**Backtest version (ChatGPT architecture, gated on PiT data):** quality factor via
+`data.fundamentals` (filing-dated only); news as an EVENT-RISK overlay (`data.news`:
+date,symbol,sentiment,event_type,confidence — reduce/block on severe negatives); sentiment
+as a SMALL conviction overlay (don't let it dominate). Blend without overfitting: prefer the
+quality FILTER (drop bottom-30% quality from momentum names) over weighted blends. Sequence:
+PiT constituents → fundamentals ingestion → quality filter → news/sentiment → re-validate →
+paper. Quality first (slower-moving, less leak-prone than news).
+
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
