@@ -181,8 +181,17 @@ gate did NOT rescue the 2024-26 period — investigate whether it actually de-ri
    cut to 0.42 during *rising* months (Apr-Aug 2025) — it de-risks into rallies. With-gate vs
    no-gate is a wash (Sharpe 1.21 vs 1.17, MaxDD 8.07% vs 8.87%), so the tiny benefit is luck,
    not timing. Root cause: 6/12-month MAs + 36-month vol percentile + shift(1) = far too laggy
-   on monthly bars (compounds with #6 VIX-rank saturation). Redesign needed: faster/leading
-   signal — drawdown-from-peak, shorter vol window, or actual India VIX — or drop the gate.
+   on monthly bars (compounds with #6 VIX-rank saturation).
+   **Redesigned (2026-05-31, ChatGPT):** leading gate = drawdown-from-peak + short/long vol
+   ratio + VIX z-score vs long baseline. Now REACTS to drawdowns (cut to 0.35 after Oct-24
+   crash). BUT verified it WHIPSAWS on monthly bars (Gemini's predicted failure): de-risked
+   0.35 into the +7.8% Mar-25 bounce and 0.35 into the +12.4% Apr-26 recovery. Kept (it's
+   mechanically sound) but its performance is NOT to be trusted/tuned on survivorship-biased
+   data. Gate-validation protocol before trusting it (Gemini): (1) "dumb-beta" test — gate
+   must improve buy-and-hold Nifty risk-adjusted return, not just this momentum book; (2)
+   parameter-plateau — only deploy if Sharpe is robust across a threshold grid, not a spike;
+   (3) out-of-sample geography — same logic should help a US/EU index. Use strictly EXPANDING
+   (not full-sample) means for VIX baseline to avoid future leak.
 
 18. **[HIGH] Prices are corporate-action UNadjusted.** Raw bhavcopy close; splits/bonuses
    (e.g. HDFCBANK 2080→745) create fake ~±50% returns that momentum chases. Must use
@@ -212,13 +221,24 @@ gate did NOT rescue the 2024-26 period — investigate whether it actually de-ri
    sensitivity (issues #12, #13 to harden). Engine core build-out complete.
 7. **Real data CONNECTED** ✅ — 89 month-end bhavcopies (2019-2026) load via `data_in/`,
    EQ-series filtered, dedup-guarded, both legacy+UDiFF formats. First validation run done.
-8. **REFINE against real data** ← NEXT, in priority order:
-   (a) **#18 adjusted prices** — biggest contaminant; get adjusted close or a CA file.
-   (b) **#19 liquidity filter** — restrict to point-in-time top-N by ADV; kill microcap noise.
-   (c) engine fixes #17 (cash yield), #15 (vol/capacity), #14 (execution price).
-   Re-run validation after each; only then judge whether momentum has a real edge.
-9. **Paper→live** via Paytm Money `pyPMClient` behind a human-confirm switch — ONLY after a
-   surviving OOS edge on adjusted, liquid data.
+8. **REFINE against real data** — partial: ✅#19 liquidity filter, ✅#18 adjusted via Yahoo
+   (but Yahoo reintroduced survivorship), ✅ regime gate redesigned (#20, whipsaws though).
+
+9. **🔴 TOP PRIORITY (Gemini call, Claude concurs): build a SURVIVORSHIP-FREE + point-in-time
+   universe BEFORE any more alpha/gate work.** Momentum on survivor-only data (Yahoo) is the
+   deadliest bias combo — the ~1.06 Sharpe is a hallucination; honest baseline ~0.4. KEY
+   INSIGHT: the **bhavcopy is already survivorship-free** (every stock trading each month,
+   incl. later-delisted); Yahoo was the regression. Correct path:
+   (a) adjust the bhavcopy with a **corporate-actions file** (loader already supports
+       `corporate_actions_path`: symbol, ex_date, factor) — fixes #18 WITHOUT dropping dead names;
+   (b) source/build a **point-in-time Nifty 500 (or 200) constituent list** (month-by-month
+       membership since ~2010) and map bhavcopy strictly to it — fixes #16/#19 properly,
+       reinjecting the dead companies the backtest must hold;
+   (c) re-run validation on that clean universe — THEN judge momentum honestly.
+   Pause gate-tuning and factor-blending until this is done (per Gemini: "every backtest you
+   run is lying to you" until the universe is PiT).
+10. **Paper→live** via Paytm Money `pyPMClient` behind a human-confirm switch — ONLY after a
+   surviving OOS edge on adjusted, survivorship-free, point-in-time data.
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 
