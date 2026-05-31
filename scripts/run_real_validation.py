@@ -96,14 +96,25 @@ def _load(data_dir: Path) -> MarketData:
         return load_universe("1990-01-01", "2100-01-01", config=cfg)
 
 
+def _load_yahoo(ydir: Path) -> MarketData:
+    px = pd.read_csv(ydir / "prices.csv", index_col=0, parse_dates=True).sort_index()
+    vpath = ydir / "volume.csv"
+    vol = (pd.read_csv(vpath, index_col=0, parse_dates=True).sort_index()
+           if vpath.exists() else None)
+    sectors = pd.Series("UNKNOWN", index=px.columns, name="sector")
+    return MarketData(prices=px, sectors=sectors, volume=vol)
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--data-dir", default="data_in")
     ap.add_argument("--split", type=float, default=0.7)
+    ap.add_argument("--yahoo", action="store_true",
+                    help="use adjusted data from data_in/yahoo instead of bhavcopy")
     args = ap.parse_args()
 
     cfg = Config()
-    data = _load(Path(args.data_dir))
+    data = _load_yahoo(Path(args.data_dir) / "yahoo") if args.yahoo else _load(Path(args.data_dir))
     n = len(data.prices.index)
     strategy = make_strategy(cfg)
 

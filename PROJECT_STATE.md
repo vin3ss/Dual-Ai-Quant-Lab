@@ -161,8 +161,17 @@ sparse universe no longer fabricates returns across gaps.)
 
 **Update — after liquidity filter (#19):** restricting to liquid top-300 made momentum
 WORSE (IS 1.17 → OOS -0.09, WF Sharpe 0.38), confirming the earlier positive was microcap
-noise. Working conclusion: **plain 12-1 monthly momentum has no robust OOS edge on tradable
-NSE names in this sample.** Remaining gate before a final call: #18 adjusted prices.
+noise.
+
+**Update — ADJUSTED data (Yahoo, top-150 liquid, #18 addressed via yfinance):** WF OOS
+Sharpe rose to **1.06** (CAGR 5.2%, vol 5%, maxDD 4.8%); regime thirds Sharpe ~1.35 in
+2019-2023 then ~0.13 in 2024-2026. Single 70/30 holdout still collapses (IS 1.59→OOS 0.07)
+because the OOS slice IS the 2024-26 momentum drawdown. Read: adjusting prices + liquid
+universe lifts walk-forward momentum to a *suggestive* ~1.0, BUT this 150-name set is the
+CURRENT liquid universe with Yahoo dropping delisted/renamed names → **survivorship-biased,
+so 1.06 is optimistic.** Not a green light. Momentum looks real-ish 2019-2023, regime-broken
+since. Main remaining caveat: survivorship / point-in-time constituents (#16). Also: regime
+gate did NOT rescue the 2024-26 period — investigate whether it actually de-risked.
 
 ## Open issues — surfaced by first real-data run
 
