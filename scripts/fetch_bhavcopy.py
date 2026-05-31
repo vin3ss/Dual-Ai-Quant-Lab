@@ -29,7 +29,21 @@ from pathlib import Path
 
 UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
-URL = "https://nsearchives.nseindia.com/content/cm/BhavCopy_NSE_CM_0_0_0_{ymd}_F_0000.csv.zip"
+
+# UDiFF format (current; only exists from ~2024-07-08 onward)
+UDIFF = "https://nsearchives.nseindia.com/content/cm/BhavCopy_NSE_CM_0_0_0_{ymd}_F_0000.csv.zip"
+# Legacy historical archive (older dates; may or may not still be served)
+LEGACY = ("https://nsearchives.nseindia.com/content/historical/EQUITIES/"
+          "{yyyy}/{mmm}/cm{dd}{mmm}{yyyy}bhav.csv.zip")
+
+
+def urls_for(d: date) -> list[str]:
+    ymd = d.strftime("%Y%m%d")
+    mmm = d.strftime("%b").upper()
+    return [
+        UDIFF.format(ymd=ymd),
+        LEGACY.format(yyyy=d.year, mmm=mmm, dd=d.strftime("%d")),
+    ]
 
 
 def make_opener() -> urllib.request.OpenerDirector:
@@ -74,14 +88,15 @@ def fetch_one(op, target: date, outdir: Path, lookback: int = 6) -> str | None:
         dest = outdir / f"BhavCopy_{ymd}.csv"
         if dest.exists():
             return ymd
-        try:
-            raw = op.open(URL.format(ymd=ymd), timeout=30).read()
-            with zipfile.ZipFile(io.BytesIO(raw)) as z:
-                csv_name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
-                dest.write_bytes(z.read(csv_name))
-            return ymd
-        except Exception:
-            continue
+        for url in urls_for(d):
+            try:
+                raw = op.open(url, timeout=30).read()
+                with zipfile.ZipFile(io.BytesIO(raw)) as z:
+                    csv_name = next(n for n in z.namelist() if n.lower().endswith(".csv"))
+                    dest.write_bytes(z.read(csv_name))
+                return ymd
+            except Exception:
+                continue
     return None
 
 
