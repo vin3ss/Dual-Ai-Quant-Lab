@@ -88,7 +88,8 @@ def _load(data_dir: Path) -> MarketData:
         sectors_path=opt("sectors.csv"),
         fundamentals_path=opt("fundamentals.csv"),
         macro_path=opt("macro.csv"),
-        use_cache=True,
+        corporate_actions_path=opt("corporate_actions.csv"),  # split/bonus adjustment (#18)
+        use_cache=False,  # CA adjustment changes prices; don't serve a stale unadjusted cache
         resample="ME",
     )
     with warnings.catch_warnings():

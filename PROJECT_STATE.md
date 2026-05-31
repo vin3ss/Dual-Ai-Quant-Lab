@@ -163,6 +163,17 @@ sparse universe no longer fabricates returns across gaps.)
 WORSE (IS 1.17 → OOS -0.09, WF Sharpe 0.38), confirming the earlier positive was microcap
 noise.
 
+**Update — HONEST run: survivorship-free bhavcopy + corporate-action adjusted (2026-05-31).**
+`scripts/fetch_corporate_actions.py` pulls split/bonus factors (Yahoo split history) into the
+loader's `corporate_actions_path`; applied to the bhavcopy this fixes fake split returns
+WITHOUT dropping dead names (verified: HDFCBANK Aug-25 -52.8% → -5.7%). Run on liquid top-300,
+CA covering the ~76 most-liquid split names: **WF OOS Sharpe ~0.66** (CAGR 3.7%, MaxDD 7.8%),
+regime thirds 1.41 / 1.24 / -0.10. This sits between raw-bhavcopy 0.38 and the survivor-only
+Yahoo 1.06 — exactly as expected: adjustment lifts it off 0.38, survivorship-free keeps it far
+below the 1.06 hallucination. **Best honest estimate of NSE 12-1 momentum so far: ~0.6 WF
+Sharpe, real but modest, currently in drawdown.** (Partial CA coverage — re-run with
+`fetch_corporate_actions --top-n 500` for the definitive number.)
+
 **Update — ADJUSTED data (Yahoo, top-150 liquid, #18 addressed via yfinance):** WF OOS
 Sharpe rose to **1.06** (CAGR 5.2%, vol 5%, maxDD 4.8%); regime thirds Sharpe ~1.35 in
 2019-2023 then ~0.13 in 2024-2026. Single 70/30 holdout still collapses (IS 1.59→OOS 0.07)
@@ -229,8 +240,10 @@ gate did NOT rescue the 2024-26 period — investigate whether it actually de-ri
    deadliest bias combo — the ~1.06 Sharpe is a hallucination; honest baseline ~0.4. KEY
    INSIGHT: the **bhavcopy is already survivorship-free** (every stock trading each month,
    incl. later-delisted); Yahoo was the regression. Correct path:
-   (a) adjust the bhavcopy with a **corporate-actions file** (loader already supports
-       `corporate_actions_path`: symbol, ex_date, factor) — fixes #18 WITHOUT dropping dead names;
+   (a) ✅ adjust the bhavcopy with a **corporate-actions file** — DONE via
+       `scripts/fetch_corporate_actions.py` (yfinance split history → symbol,ex_date,factor);
+       loader applies it, fixes #18 WITHOUT dropping dead names. Re-run with `--top-n 500`
+       for full coverage (test run used top-120 → ~0.66 WF Sharpe).
    (b) source/build a **point-in-time Nifty 500 (or 200) constituent list** (month-by-month
        membership since ~2010) and map bhavcopy strictly to it — fixes #16/#19 properly,
        reinjecting the dead companies the backtest must hold;
