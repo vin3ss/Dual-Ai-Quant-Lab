@@ -32,7 +32,7 @@ almost always hides a leak. The critic's job is to find it before capital does.
 |---|---|---|---|
 | alpha | `technical/momentum.py` | ✅ implemented | 12-1 risk-adjusted momentum |
 | alpha | `fundamental/quality.py` | ✅ implemented | ROE + accruals + earnings stability |
-| alpha | `regime/__init__.py` | 🟡 wired in; internals to refine | per-date multiplier [0,1]; see open issues 1-3,5 |
+| alpha | `regime/__init__.py` | ✅ implemented + refined | per-date multiplier [0,1]; macro overlay refinement pending (issue #6) |
 | alpha | `sentiment/` | 🔴 stub | earnings-call / news NLP |
 | alpha | `macro/` | 🔴 stub | RBI/CPI tilts |
 | alpha | `options/` | 🔴 stub | OI / PCR / FII-deriv overlay |
@@ -44,17 +44,20 @@ almost always hides a leak. The critic's job is to find it before capital does.
 
 Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 
-## Open issues — RegimeDetector (Claude critique, 2026-05-31)
+## Open issues — RegimeDetector
 
-1. **[MED] Frequency mismatch.** Trend/vol windows are in bars (6/12/36) but VIX uses
-   `rolling(252, min_periods=60)` and FII `rolling(60/20)` — daily assumptions. Engine
-   runs monthly bars, so macro gates sit inert. Fix: one frequency-aware `bars_per_year`
-   param, or set macro windows in months.
-2. **[MED] Survivorship in fallback index.** Equal-weight synthetic index is built from
-   whatever tickers are in `data.prices`; a survivor-only universe leaks hindsight.
-   Fix: point-in-time constituents, or document the bias loudly.
-3. **[LOW→MED] Hand-tuned magic numbers.** Gate levels + percentile cutoffs are assumed,
-   not calibrated. Fix: move to config, reduce DoF, show insensitivity to small changes.
+1. ~~**[MED] Frequency mismatch.**~~ ✅ DONE — macro windows derive from `bars_per_year`.
+2. ~~**[MED] Survivorship in fallback index.**~~ ✅ DONE — equal-weight fallback now emits a
+   `RuntimeWarning`; index built from returns.
+3. ~~**[LOW→MED] Hand-tuned magic numbers.**~~ ✅ DONE — all thresholds moved to the constructor.
+6. **[MED] VIX rolling-rank saturates on sustained stress (NEW, 2026-05-31).** The macro
+   VIX gate uses `rolling(bars_per_year).rank(pct=True)`. When VIX jumps and *stays* high,
+   the rolling window fills with high values and the percentile rank collapses back toward
+   ~0.5 — so a sustained high-vol regime stops triggering the gate after ~`bars_per_year`
+   bars. Verified: injecting a VIX spike that holds barely moved the multiplier. Fix
+   options: compare VIX to a *longer* trailing baseline (e.g. 3y) than the ranking window,
+   or use a level/z-score vs long-run mean instead of a short rolling rank. Defer until
+   real macro data is connected (step 3) so we calibrate against actual India VIX history.
 4. ~~**[LOW] Not wired into pipeline.**~~ ✅ DONE (2026-05-31). `RiskManager.apply_regime`
    added + wired into demo. Tests: crash-drawdown reduction (51.8%→28.3% on the test
    scenario) and all-dates no-future-leakage. Demo Sharpe 0.29→0.46, maxDD 14.1%→10.5%.
@@ -66,8 +69,8 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
-2. **Refine RegimeDetector** per open issues 1–3, 5. ← NEXT (ChatGPT)
-3. **Connect real data** (`nsefin` / bhavcopy) — replace synthetic; enforce point-in-time.
+2. ~~**Refine RegimeDetector** per open issues 1–3, 5.~~ ✅ DONE (2026-05-31). New issue #6 logged.
+3. **Connect real data** (`nsefin` / bhavcopy) — replace synthetic; enforce point-in-time. ← NEXT
 4. **Honest cost & capacity** — validate Indian cost model, add ADV/liquidity limits.
 5. **Fill remaining signals** — options flow, sentiment, macro (each critiqued).
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
