@@ -56,6 +56,22 @@ def test_sector_tilt_survives_where_blending_would_not():
     assert tilted.loc[dt, ["BANK1", "BANK2"]].sum() != tilted.loc[dt, ["FMCG1", "FMCG2"]].sum()
 
 
+def test_sector_tilt_is_sign_aware_for_shorts():
+    """Gemini audit #4: a bullish tilt must REDUCE a short, not deepen it."""
+    dates = pd.date_range("2024-01-31", periods=1, freq="ME")
+    weights = pd.DataFrame({"LONG": [0.25], "SHORT": [-0.25]}, index=dates)
+    sectors = pd.Series({"LONG": "BANK", "SHORT": "BANK"}, name="sector")
+    macro = pd.DataFrame({"LONG": [1.0], "SHORT": [1.0]}, index=dates)  # bullish
+
+    pc = PortfolioConstructor(StrategyConfig())
+    tilted = pc.apply_sector_tilt(weights, macro, sectors, strength=0.5)
+    dt = dates[0]
+
+    assert tilted.loc[dt, "LONG"] > 0.25          # bullish -> more long
+    assert tilted.loc[dt, "SHORT"] > -0.25        # bullish -> LESS short (toward 0)
+    assert tilted.loc[dt, "SHORT"] < 0.0          # but not flipped to long
+
+
 def test_sector_tilt_noop_when_macro_none_or_zero():
     weights, _, sectors = _setup()
     pc = PortfolioConstructor(StrategyConfig())

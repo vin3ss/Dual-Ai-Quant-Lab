@@ -42,8 +42,28 @@ def _param_grid(grid: dict | None) -> list[dict | None]:
     return [dict(zip(keys, vals)) for vals in product(*(grid[k] for k in keys))]
 
 
-def _slice_data(data: MarketData, start, end) -> MarketData:
-    idx = data.prices.loc[start:end].index
+def _slice_data(data: MarketData, start, end, lookback: int = 0) -> MarketData:
+    """Slice MarketData to [start,end], optionally prepending historical context.
+
+    The prepended lookback bars are for feature/signal computation only. Callers
+    must trim weights/returns back to the true scored window before evaluation.
+    """
+    full_idx = data.prices.index
+    start_ts = pd.Timestamp(start)
+    end_ts = pd.Timestamp(end)
+
+    if start_ts not in full_idx or end_ts not in full_idx:
+        window_idx = data.prices.loc[start_ts:end_ts].index
+        if window_idx.empty:
+            raise ValueError("Requested slice has no matching dates.")
+        start_pos = full_idx.get_loc(window_idx[0])
+        end_pos = full_idx.get_loc(window_idx[-1])
+    else:
+        start_pos = full_idx.get_loc(start_ts)
+        end_pos = full_idx.get_loc(end_ts)
+
+    buffer_start = max(0, start_pos - max(lookback, 0))
+    idx = full_idx[buffer_start:end_pos + 1]
 
     def frame(x):
         if x is None:
@@ -82,6 +102,33 @@ def _run(
     )
 
 
+def _run_scored_window(
+    weights_fn: WeightsFn,
+    data_with_context: MarketData,
+    score_index: pd.Index,
+    cfg: Config,
+    params: dict | None,
+) -> BacktestResult:
+    """Compute weights with context, evaluate only on score_index."""
+    weights_full = weights_fn(data_with_context, params)
+
+    weights = weights_full.reindex(score_index)
+    prices = data_with_context.prices.reindex(score_index)
+    returns = data_with_context.returns().reindex(score_index)
+    volume = (
+        data_with_context.volume.reindex(score_index)
+        if getattr(data_with_context, "volume", None) is not None
+        else None
+    )
+
+    return Backtester(cfg).run(
+        weights=weights,
+        returns=returns,
+        prices=prices,
+        volume=volume,
+    )
+
+
 def _metric(stats: dict, name: str) -> float:
     if name not in stats:
         raise KeyError(f"Metric {name!r} not found in stats.")
@@ -117,6 +164,7 @@ def walk_forward(
     step: int | None = None,
     param_grid: dict | None = None,
     metric: str = "sharpe",
+    lookback: int = 0,
 ) -> ValidationResult:
     """Rolling train/test validation.
 
@@ -143,11 +191,17 @@ def walk_forward(
         train_idx = idx[start:start + train_window]
         test_idx = idx[start + train_window:start + train_window + test_window]
 
-        train_data = _slice_data(data, train_idx[0], train_idx[-1])
-        test_data = _slice_data(data, test_idx[0], test_idx[-1])
+        train_data = _slice_data(data, train_idx[0], train_idx[-1], lookback=lookback)
+        test_data = _slice_data(data, test_idx[0], test_idx[-1], lookback=lookback)
 
         chosen = _select_params(weights_fn, train_data, cfg, params_list, metric)
-        result = _run(weights_fn, test_data, cfg, chosen)
+        result = _run_scored_window(
+            weights_fn=weights_fn,
+            data_with_context=test_data,
+            score_index=test_idx,
+            cfg=cfg,
+            params=chosen,
+        )
 
         oos_returns.append(result.returns)
         oos_turnover.append(result.turnover)

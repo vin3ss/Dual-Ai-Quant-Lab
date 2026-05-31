@@ -119,6 +119,49 @@ def test_regime_stress_returns_per_window_stats():
     assert "max_dd" in out.columns
 
 
+def test_walk_forward_lookback_feeds_signal_but_excludes_buffer_returns():
+    data = _validation_data()
+    cfg = Config()
+
+    seen = {"first_scored_weight": None}
+
+    def momentum_style_weights_fn(window_data: MarketData, params: dict | None = None):
+        lookback = (params or {}).get("lookback", 3)
+        mom = window_data.prices.pct_change(lookback)
+
+        weights = pd.DataFrame(0.0, index=window_data.prices.index, columns=window_data.prices.columns)
+        for dt, row in mom.iterrows():
+            valid = row.dropna()
+            if valid.empty:
+                continue
+            weights.loc[dt, valid.idxmax()] = 1.0
+
+        # First scored test bar in the first WF split is original index[12].
+        first_scored = data.prices.index[12]
+        if first_scored in weights.index and seen["first_scored_weight"] is None:
+            seen["first_scored_weight"] = weights.loc[first_scored].abs().sum()
+
+        return weights
+
+    result = walk_forward(
+        weights_fn=momentum_style_weights_fn,
+        data=data,
+        cfg=cfg,
+        train_window=12,
+        test_window=6,
+        step=6,
+        param_grid={"lookback": [3]},
+        lookback=3,
+    )
+
+    # Buffer history allowed momentum to produce a real position on the first scored bar.
+    assert seen["first_scored_weight"] == 1.0
+
+    # But buffer bars are not included in OOS returns.
+    assert result.result.returns.index.min() == data.prices.index[12]
+    assert len(result.result.returns) == 36
+
+
 def test_parameter_sensitivity_flags_fragility():
     data = _validation_data()
     cfg = Config()

@@ -65,8 +65,12 @@ class PortfolioConstructor:
             if gross == 0 or dt not in macro_signal.index:
                 continue
             tilt = macro_signal.loc[dt].reindex(row.index).fillna(0.0)
-            mult = (1.0 + strength * tilt).clip(lower=0.0)  # no long-only sign flips
-            tilted = row * mult
+            # SIGN-AWARE tilt (fixes Gemini audit #4): adjust each weight in the
+            # DIRECTION of the tilt. A bullish tilt increases longs and REDUCES
+            # shorts; a multiplicative `row * (1+strength*tilt)` would instead make
+            # a short more short. Scale by |weight| so the sign of the move tracks
+            # the tilt, not the existing position.
+            tilted = row + row.abs() * (strength * tilt)
             new_gross = tilted.abs().sum()
             if new_gross > 0:
                 tilted = tilted * (gross / new_gross)   # preserve gross exposure

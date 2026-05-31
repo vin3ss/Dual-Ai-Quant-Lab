@@ -102,7 +102,30 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    `1 + strength*tilt`, renormalizes to preserve gross), so it survives instead of being
    demeaned. Tests in `tests/test_macro_integration.py` incl. one proving the old blending
    path zeroes out while the overlay path works. Usage: blend momentum/quality/etc. as
-   before, but route macro through `apply_sector_tilt`, not `combine`.
+   before, but route macro through `apply_sector_tilt`, not `combine`. Refined 2026-05-31
+   (Gemini audit #4): now SIGN-AWARE — `weight + |weight|*strength*tilt`, so a bullish tilt
+   increases longs and REDUCES shorts (the old multiplicative form deepened shorts). Short
+   case covered by a test.
+
+## Open issues — Gemini red-team audit (2026-05-31)
+
+14. **[MED→HIGH] Execution-price simultaneity.** Backtest earns close(t-1)→close(t) on
+   weights decided at close(t-1) — i.e. signal and execution at the same close, which isn't
+   tradable (NSE close is a 3:00–3:30 VWAP). Should execute at next open/VWAP. Bias real but
+   smaller on monthly bars; Gemini's "3-5% CAGR" is an estimate, unverified. Add an
+   execution-lag / next-open option to the engine.
+15. **[HIGH] Vol-target ↔ capacity decoupling.** RiskManager sizes for a vol target, then the
+   backtest clips trades to ADV capacity and the overflow silently becomes cash → realized
+   exposure/vol decouples from target. Fix: make capacity-aware sizing (redistribute clipped
+   capital to next names) or at least recompute/report realized exposure after clipping.
+16. **[HIGH] Bhavcopy "Top-N" survivorship.** Deriving the universe from daily bhavcopy by
+   turnover/mcap is itself a look-ahead filter (drops crashing names pre-crash). Reinforces
+   the step-7 requirement: source a true point-in-time index-constituent list; don't derive
+   the universe from bhavcopy alone.
+17. **[MED] Uninvested cash earns 0%.** When regime de-risks to cash, the backtest accrues 0
+   on the uninvested fraction, unfairly penalizing the regime detector. Accrue ~RBI
+   risk-free (repo, ~6%) on `1 - invested`. This makes results MORE honest (and slightly
+   better), so fix before judging regime parameters.
 
 ## Open issues — Sentiment signal
 
@@ -119,12 +142,13 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    overlap; repeated grid searches introduce multiple-testing bias; stress windows can be
    cherry-picked; OOS gets contaminated if reused for design decisions. Keep a final
    untouched holdout and log every parameter search.
-13. **[HIGH] Walk-forward windows have no lookback buffer (Claude, verified).** `_slice_data`
-   slices each train/test window to exactly [start,end], so a signal needing N bars of
-   history (12-month momentum, regime warmup) starts each window all-NaN — real strategies
-   would be crippled/degraded in walk-forward even though the harness "passes" with the
-   pick-a-ticker test fn. Fix: prepend a `lookback` buffer of history to each window's data
-   for signal computation, then evaluate/score only on the true test slice.
+13. ~~**[HIGH] Walk-forward windows have no lookback buffer.**~~ ✅ FIXED (2026-05-31).
+   `_slice_data(..., lookback=N)` prepends N bars of history; `_run_scored_window` computes
+   signals on the buffered data but scores returns/turnover/stats ONLY on the true window.
+   Test proves a momentum fn has a real position on the first scored bar and buffer bars are
+   excluded from OOS returns. Minor follow-up: train-window param selection (`_select_params`)
+   still scores over the buffered train slice, not the exact train window — low impact (no
+   future leak, just a marginally wider selection window).
 
 ## Roadmap (priority order)
 
