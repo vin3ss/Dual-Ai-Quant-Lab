@@ -22,7 +22,10 @@ class MarketData:
     volume: pd.DataFrame | None = None           # date x ticker shares traded
 
     def returns(self) -> pd.DataFrame:
-        return self.prices.pct_change()
+        # fill_method=None: do NOT forward-fill prices across gaps. With a sparse
+        # (delisting/listing) universe, the pandas default pad-fill fabricates 0%
+        # returns over missing months and a false jump when data resumes.
+        return self.prices.pct_change(fill_method=None)
 
 
 def make_synthetic_data(n_tickers: int = 40, n_months: int = 120,

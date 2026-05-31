@@ -43,6 +43,7 @@ class LoaderConfig:
     use_cache: bool = True
     refresh: bool = False
     resample: str | None = "ME"  # keep current engine compatible with monthly bars
+    equity_series: tuple[str, ...] = ("EQ",)  # filter bhavcopy to cash equity series
 
 
 def load_universe(
@@ -83,7 +84,8 @@ def load_universe(
     )
 
     if cfg.source == "csv":
-        raw_prices = _load_bhavcopy_csv(cfg.bhavcopy_dir, start_ts, end_ts)
+        raw_prices = _load_bhavcopy_csv(cfg.bhavcopy_dir, start_ts, end_ts,
+                                        equity_series=cfg.equity_series)
     elif cfg.source == "nsepython":
         raw_prices = _load_bhavcopy_nsepython(start_ts, end_ts, universe)
     elif cfg.source == "nsefin":
@@ -156,6 +158,7 @@ def _load_bhavcopy_csv(
     bhavcopy_dir: Path | None,
     start: pd.Timestamp,
     end: pd.Timestamp,
+    equity_series: tuple[str, ...] = ("EQ",),
 ) -> pd.DataFrame:
     if bhavcopy_dir is None:
         raise ValueError("bhavcopy_dir is required when source='csv'")
@@ -212,6 +215,19 @@ def _load_bhavcopy_csv(
 
     out = pd.concat(frames, ignore_index=True)
     out = out[(out["date"] >= start) & (out["date"] <= end)]
+
+    # Filter to cash-equity series only (drops bonds/GS, SME, BE, ETFs, etc.).
+    if equity_series and "series" in out.columns:
+        keep = {s.upper() for s in equity_series}
+        out = out[out["series"].astype(str).str.upper().str.strip().isin(keep)]
+        if out.empty:
+            raise ValueError(
+                f"No rows left after filtering to series {sorted(keep)}. "
+                "Check the bhavcopy 'series'/'SctySrs' column."
+            )
+
+    # Guard against any residual duplicate (symbol, date) rows.
+    out = out.drop_duplicates(subset=["date", "symbol"], keep="last")
     return out.sort_values(["date", "symbol"])
 
 

@@ -150,6 +150,26 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    still scores over the buffered train slice, not the exact train window — low impact (no
    future leak, just a marginally wider selection window).
 
+## First real-data validation (2026-05-31) — VERDICT: no trustworthy edge yet
+
+Ran momentum+regime on 3204 NSE stocks, 2019-2026 (month-end bhavcopy). Headline:
+**IS Sharpe 1.48 → OOS Sharpe 0.04 (degradation 1.45).** Walk-forward OOS Sharpe 0.77
+but fragile; regime thirds show momentum worked 2019-2023, died 2024-2026. The IS→OOS
+collapse says the in-sample strength does not persist — treat as noise/artifact until the
+data issues below are fixed. (Fixed `returns()` to `pct_change(fill_method=None)` so a
+sparse universe no longer fabricates returns across gaps.)
+
+## Open issues — surfaced by first real-data run
+
+18. **[HIGH] Prices are corporate-action UNadjusted.** Raw bhavcopy close; splits/bonuses
+   (e.g. HDFCBANK 2080→745) create fake ~±50% returns that momentum chases. Must use
+   adjusted close (vendor) or apply a point-in-time corporate-actions file before any
+   result is trustworthy. Biggest single contaminant right now.
+19. **[HIGH] No liquidity filter / 3204-name universe.** Union of all EQ names ever listed;
+   ~44% NaN, thousands of illiquid microcaps dominate the cross-section with untradeable
+   noise, and the NaN-union is survivorship-flavoured. Restrict to a point-in-time liquid
+   set (e.g. top-N by trailing ADV/turnover each month) — overlaps issue #16.
+
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
@@ -166,10 +186,15 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
 5b. ~~**Fix issue #10**~~ ✅ DONE — `apply_sector_tilt` sector-budget overlay.
 6. ~~**Validation harness**~~ ✅ DONE — walk-forward, holdout, regime stress, param
    sensitivity (issues #12, #13 to harden). Engine core build-out complete.
-7. **Connect real data + paper→live** — wire live nsepython/nsefin adapters, source
-   point-in-time constituents/fundamentals, then paper trade, then live via Paytm Money
-   `pyPMClient` behind a human-confirm switch. Also fix #13 (lookback buffer) before
-   trusting walk-forward on real signals. ← NEXT
+7. **Real data CONNECTED** ✅ — 89 month-end bhavcopies (2019-2026) load via `data_in/`,
+   EQ-series filtered, dedup-guarded, both legacy+UDiFF formats. First validation run done.
+8. **REFINE against real data** ← NEXT, in priority order:
+   (a) **#18 adjusted prices** — biggest contaminant; get adjusted close or a CA file.
+   (b) **#19 liquidity filter** — restrict to point-in-time top-N by ADV; kill microcap noise.
+   (c) engine fixes #17 (cash yield), #15 (vol/capacity), #14 (execution price).
+   Re-run validation after each; only then judge whether momentum has a real edge.
+9. **Paper→live** via Paytm Money `pyPMClient` behind a human-confirm switch — ONLY after a
+   surviving OOS edge on adjusted, liquid data.
 6. **Validation harness** — walk-forward, out-of-sample holdout, regime stress tests.
 7. **Paper → live execution** via Paytm Money `pyPMClient`, behind a human-confirm switch.
 
