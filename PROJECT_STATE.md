@@ -78,6 +78,17 @@ Legend: ✅ done · 🟠 partial / not integrated · 🔴 stub
    droughts in crashes, partial fills (approximated as clipping), and tax on realised
    gains. Treat backtest costs as a *floor*, not the truth. Revisit when daily data lands.
 
+## Open issues — Options-flow signal
+
+8. **[MED] Raw-data contract is simplified (logged 2026-05-31, ChatGPT review).** The
+   module expects a clean date×ticker PCR/FII panel. Real NSE option-chain data is richer
+   and messier (expiry, strike, CE/PE OI, OI change, volume, IV, timestamps) and needs an
+   upstream aggregator by expiry/strike before this overlay is production-realistic.
+   Market-wide FII *derivative* data is intentionally rejected here and should feed
+   regime/macro, not cross-sectional alpha. Also: "low PCR = bullish" is a hypothesis, not
+   proven alpha — validate by regime and expiry bucket. Data-bias risks: stale EOD
+   snapshots, expiry rolls, vendor-cleaned OI, illiquid single-stock options.
+
 ## Roadmap (priority order)
 
 1. ~~**Wire regime into RiskManager**~~ ✅ DONE (2026-05-31).
