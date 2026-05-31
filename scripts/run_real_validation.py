@@ -26,6 +26,7 @@ from nse_alpha_forge.alpha.fundamental import QualitySignal
 from nse_alpha_forge.alpha.regime import RegimeDetector
 from nse_alpha_forge.alpha.macro import MacroSignal
 from nse_alpha_forge.portfolio import PortfolioConstructor
+from nse_alpha_forge.portfolio.universe import apply_liquidity_filter
 from nse_alpha_forge.risk import RiskManager
 from nse_alpha_forge.backtest import walk_forward, holdout_split, regime_stress
 
@@ -51,6 +52,11 @@ def make_strategy(cfg: Config):
 
             pc = PortfolioConstructor(StrategyConfig(sector_neutral=_has_sectors(data)))
             composite = pc.combine(signals)
+            # Restrict to the point-in-time liquid universe (issue #19)
+            composite = apply_liquidity_filter(
+                composite, data.prices, data.volume,
+                top_n=p.get("liq_top_n", 300), lookback=p.get("liq_lookback", 6),
+            )
             weights = pc.to_weights(composite, sectors=data.sectors)
 
             rm = RiskManager(cfg.risk)

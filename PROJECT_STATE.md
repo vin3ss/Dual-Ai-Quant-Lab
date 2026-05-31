@@ -159,16 +159,22 @@ collapse says the in-sample strength does not persist — treat as noise/artifac
 data issues below are fixed. (Fixed `returns()` to `pct_change(fill_method=None)` so a
 sparse universe no longer fabricates returns across gaps.)
 
+**Update — after liquidity filter (#19):** restricting to liquid top-300 made momentum
+WORSE (IS 1.17 → OOS -0.09, WF Sharpe 0.38), confirming the earlier positive was microcap
+noise. Working conclusion: **plain 12-1 monthly momentum has no robust OOS edge on tradable
+NSE names in this sample.** Remaining gate before a final call: #18 adjusted prices.
+
 ## Open issues — surfaced by first real-data run
 
 18. **[HIGH] Prices are corporate-action UNadjusted.** Raw bhavcopy close; splits/bonuses
    (e.g. HDFCBANK 2080→745) create fake ~±50% returns that momentum chases. Must use
    adjusted close (vendor) or apply a point-in-time corporate-actions file before any
    result is trustworthy. Biggest single contaminant right now.
-19. **[HIGH] No liquidity filter / 3204-name universe.** Union of all EQ names ever listed;
-   ~44% NaN, thousands of illiquid microcaps dominate the cross-section with untradeable
-   noise, and the NaN-union is survivorship-flavoured. Restrict to a point-in-time liquid
-   set (e.g. top-N by trailing ADV/turnover each month) — overlaps issue #16.
+19. ~~**[HIGH] No liquidity filter.**~~ ✅ ADDRESSED (2026-05-31). `portfolio/universe.py`
+   `apply_liquidity_filter` (point-in-time top-N by trailing turnover) + tests. Re-run on
+   liquid top-300: momentum got WORSE (IS 1.17 → OOS -0.09; WF Sharpe 0.77→0.38) — i.e. the
+   earlier mild positive was microcap noise. Tradable-universe momentum shows no OOS edge
+   here. (NaN-union survivorship still partly remains; tighten with PiT constituents later.)
 
 ## Roadmap (priority order)
 
