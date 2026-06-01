@@ -34,6 +34,8 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
 DELIVERY_URL = "https://nsearchives.nseindia.com/products/content/sec_bhavdata_full_{ddmmyyyy}.csv"
 BULK_URL = "https://nsearchives.nseindia.com/content/equities/bulk.csv"
 BLOCK_URL = "https://nsearchives.nseindia.com/content/equities/block.csv"
+# Historical deals API (on www; works from a normal machine, 403 from datacenters):
+HIST_URL = "https://www.nseindia.com/api/historical/cm/{kind}?from={frm}&to={to}"
 FIIDII_URL = "https://www.nseindia.com/api/fiidiiTradeReact"
 
 
@@ -106,6 +108,39 @@ def fetch_deals(op, url, outdir, fname):
         print(f"  {fname} skipped: {type(e).__name__}")
 
 
+def fetch_deals_history(op, kind: str, frm: str, to: str, outdir: Path, fname: str):
+    """Historical bulk/block deals via the www API (run LOCALLY; 403 from datacenters).
+
+    kind: 'bulkDeals' or 'blockDeals'. frm/to: DD-MM-YYYY. NSE caps the range, so we
+    page month-by-month. Field names: BD_DT_DATE, BD_SYMBOL, BD_BUY_SELL, BD_QTY_TRD.
+    """
+    from datetime import date, timedelta
+    d0 = date(*map(int, frm.split("-")[::-1])) if "-" in frm and len(frm.split("-")[0]) == 2 \
+        else date.fromisoformat(frm)
+    d1 = date(*map(int, to.split("-")[::-1])) if "-" in to and len(to.split("-")[0]) == 2 \
+        else date.fromisoformat(to)
+    rows, cur = [], d0
+    while cur <= d1:
+        nxt = min(d1, (cur.replace(day=28) + timedelta(days=10)).replace(day=1) - timedelta(days=1))
+        url = HIST_URL.format(kind=kind, frm=cur.strftime("%d-%m-%Y"), to=nxt.strftime("%d-%m-%Y"))
+        try:
+            data = json.loads(_get(op, url).decode("utf-8", "ignore")).get("data", [])
+            for r in data:
+                act = (r.get("BD_BUY_SELL") or "").strip().upper()
+                rows.append({"date": r.get("BD_DT_DATE") or r.get("mTIMESTAMP"),
+                             "symbol": r.get("BD_SYMBOL"),
+                             "action": "BUY" if act.startswith("B") else "SELL",
+                             "quantity": str(r.get("BD_QTY_TRD", "0")).replace(",", "")})
+            print(f"  {kind} {cur:%b-%Y}: {len(data)}")
+        except Exception as e:
+            print(f"  {kind} {cur:%b-%Y} skipped: {type(e).__name__}")
+        cur = nxt + timedelta(days=1)
+        time.sleep(0.5)
+    if rows:
+        _write(outdir / fname, ["date", "symbol", "action", "quantity"], rows)
+        print(f"  wrote {len(rows)} {kind} -> {fname}")
+
+
 def fetch_fiidii(op, outdir):
     try:
         data = json.loads(_get(op, FIIDII_URL).decode("utf-8", "ignore"))
@@ -133,13 +168,19 @@ def main():
     ap.add_argument("--start", required=True)
     ap.add_argument("--end", required=True)
     ap.add_argument("--out", default="data_in/smartmoney")
+    ap.add_argument("--deals-history", action="store_true",
+                    help="pull 6-12mo bulk/block history via www API (RUN LOCALLY; 403 in datacenters)")
     args = ap.parse_args()
     outdir = Path(args.out)
     op = opener()
     print(f"Fetching NSE big-fish data -> {outdir} (run locally; needs NSE access)")
     fetch_delivery(op, date.fromisoformat(args.start), date.fromisoformat(args.end), outdir)
-    fetch_deals(op, BULK_URL, outdir, "bulk_deals.csv")
-    fetch_deals(op, BLOCK_URL, outdir, "block_deals.csv")
+    if args.deals_history:
+        fetch_deals_history(op, "bulkDeals", args.start, args.end, outdir, "bulk_deals.csv")
+        fetch_deals_history(op, "blockDeals", args.start, args.end, outdir, "block_deals.csv")
+    else:
+        fetch_deals(op, BULK_URL, outdir, "bulk_deals.csv")
+        fetch_deals(op, BLOCK_URL, outdir, "block_deals.csv")
     fetch_fiidii(op, outdir)
     print("Done. These feed enrich_holdings' smart-money overlay (monitor only, not backtest).")
 
