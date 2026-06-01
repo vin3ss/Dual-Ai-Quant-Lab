@@ -329,6 +329,14 @@ NSE bull run is statistically thin — do NOT deploy capital on it.
   backtest (not point-in-time). This is how financial/news/sentiment are usable NOW without
   the PiT data wall.
 
+- `scripts/fetch_smart_money.py` — pulls REAL free NSE big-fish data (delivery %, bulk
+  deals, block deals, FII/DII). **KEY: `nsearchives.nseindia.com` IS reachable from the
+  sandbox** (only the `www` API is 403-blocked), so this data is fetchable directly — unlike
+  index constituents/fundamentals. `analytics/smart_money.py` now has `delivery_accumulation`
+  + `deal_pressure` consumers (tested); `enrich_holdings` shows real delivery% + bulk/block
+  deal direction per momentum name. Delivery % (conviction holding) is the genuinely useful
+  free big-fish signal. Monitor-only, not backtest.
+
 **Backtest version (ChatGPT architecture, gated on PiT data):** quality factor via
 `data.fundamentals` (filing-dated only); news as an EVENT-RISK overlay (`data.news`:
 date,symbol,sentiment,event_type,confidence — reduce/block on severe negatives); sentiment

@@ -74,15 +74,39 @@ def main() -> None:
     vspk = volume_spike(data.prices, data.volume).iloc[-1]
     mflow = money_flow(data.prices, data.volume).iloc[-1]
 
+    # Real big-fish data if fetched into data_in/smartmoney/ (delivery %, bulk/block deals)
+    sm = dd / "smartmoney"
+    deliv_latest, deals_net = {}, {}
+    if (sm / "delivery.csv").exists():
+        dv = pd.read_csv(sm / "delivery.csv")
+        dv["deliv_pct"] = pd.to_numeric(dv["deliv_pct"], errors="coerce")
+        dv["symbol"] = dv["symbol"].astype(str).str.upper().str.strip()
+        deliv_latest = dv.pivot_table(index="date", columns="symbol", values="deliv_pct",
+                                      aggfunc="last").iloc[-1].to_dict()
+    frames = [pd.read_csv(sm / f) for f in ("bulk_deals.csv", "block_deals.csv")
+              if (sm / f).exists()]
+    if frames:
+        dl = pd.concat(frames, ignore_index=True)
+        dl.columns = [c.lower().strip() for c in dl.columns]
+        dl["symbol"] = dl["symbol"].astype(str).str.upper().str.strip()
+        sgn = dl["action"].astype(str).str.upper().str.startswith("B").map({True: 1, False: -1})
+        dl["signed"] = sgn * pd.to_numeric(dl["quantity"], errors="coerce")
+        deals_net = dl.groupby("symbol")["signed"].sum().to_dict()
+    has_bigfish = bool(deliv_latest or deals_net)
+
     print(f"Top {args.top} momentum names as of {sig.index[-1].date()} "
           f"(strongest 12-1 momentum):\n")
-    print(f"{'SYMBOL':12}{'Mom z':>7}{'Flow':>6}{'VolX':>6}{'P/E':>7}{'ROE%':>7}{'D/E':>7}  Sentiment")
-    print("-" * 80)
+    print(f"{'SYMBOL':12}{'Mom z':>7}{'Flow':>6}{'VolX':>6}{'Dlv%':>6}{'Deal':>6}"
+          f"{'P/E':>7}{'ROE%':>7}  Sentiment")
+    print("-" * 86)
 
     for sym in top:
         momz = latest[sym]
         sm_flow = mflow.get(sym, float("nan"))
         sm_vol = vspk.get(sym, float("nan"))
+        dlv = deliv_latest.get(sym, float("nan"))
+        net = deals_net.get(sym)
+        deal_str = "BUY" if (net and net > 0) else ("SELL" if (net and net < 0) else "-")
         pe = roe = mgn = de = float("nan")
         sent = "n/a"; heads = []
         try:
@@ -106,15 +130,15 @@ def main() -> None:
 
         def f(x, d=1):
             return f"{x:.{d}f}" if pd.notna(x) else "  -"
-        print(f"{sym:12}{momz:7.2f}{f(sm_flow,2):>6}{f(sm_vol):>6}"
-              f"{f(pe):>7}{f(roe):>7}{f(de):>7}  {sent}")
+        print(f"{sym:12}{momz:7.2f}{f(sm_flow,2):>6}{f(sm_vol):>6}{f(dlv):>6}{deal_str:>6}"
+              f"{f(pe):>7}{f(roe):>7}  {sent}")
         for h in heads[:2]:
             print(f"            • {h[:78]}")
 
-    print("\nColumns: Mom z = momentum strength | Flow = money-flow [-1..1] (accumulation>0) |")
-    print("VolX = volume vs trailing median (>1.5 elevated) | P/E,ROE,D/E,Sentiment = live Yahoo.")
-    print("Flow/VolX are from our own bhavcopy (free). Richer smart-money (FII/DII, bulk/block")
-    print("deals, delivery%, F&O OI) need separate free NSE files — not yet ingested.")
+    bf = "REAL NSE delivery%/bulk-block deals" if has_bigfish else "NOT loaded (run fetch_smart_money)"
+    print(f"\nColumns: Mom=momentum | Flow=money-flow [-1..1] | VolX=vol vs median | "
+          f"Dlv%=delivery% | Deal=recent bulk/block | P/E,ROE,News=live Yahoo")
+    print(f"Big-fish data: {bf}. Deal = net direction of recent bulk+block deals in the name.")
     print("LIVE snapshot for TODAY's decision; NOT in the backtest; NOT financial advice.")
 
 
