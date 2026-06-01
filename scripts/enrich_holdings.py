@@ -22,6 +22,7 @@ import pandas as pd
 from nse_alpha_forge.data import load_universe, LoaderConfig
 from nse_alpha_forge.alpha.technical import MomentumSignal
 from nse_alpha_forge.portfolio.universe import apply_constituent_filter
+from nse_alpha_forge.analytics import volume_spike, money_flow
 
 POS = {"surge", "profit", "gain", "gains", "beat", "beats", "upgrade", "record", "strong",
        "rise", "rises", "jump", "growth", "win", "wins", "bullish", "high", "rally", "soar"}
@@ -69,13 +70,19 @@ def main() -> None:
     latest = sig.iloc[-1].dropna().sort_values(ascending=False)
     top = list(latest.head(args.top).index)
 
+    # Smart-money proxies from our own bhavcopy volume (free, no yfinance needed)
+    vspk = volume_spike(data.prices, data.volume).iloc[-1]
+    mflow = money_flow(data.prices, data.volume).iloc[-1]
+
     print(f"Top {args.top} momentum names as of {sig.index[-1].date()} "
           f"(strongest 12-1 momentum):\n")
-    print(f"{'SYMBOL':12}{'Mom z':>7}{'P/E':>8}{'ROE%':>7}{'Mgn%':>7}{'D/E':>7}  Sentiment")
-    print("-" * 78)
+    print(f"{'SYMBOL':12}{'Mom z':>7}{'Flow':>6}{'VolX':>6}{'P/E':>7}{'ROE%':>7}{'D/E':>7}  Sentiment")
+    print("-" * 80)
 
     for sym in top:
         momz = latest[sym]
+        sm_flow = mflow.get(sym, float("nan"))
+        sm_vol = vspk.get(sym, float("nan"))
         pe = roe = mgn = de = float("nan")
         sent = "n/a"; heads = []
         try:
@@ -99,13 +106,16 @@ def main() -> None:
 
         def f(x, d=1):
             return f"{x:.{d}f}" if pd.notna(x) else "  -"
-        print(f"{sym:12}{momz:7.2f}{f(pe):>8}{f(roe):>7}{f(mgn):>7}{f(de):>7}  {sent}")
+        print(f"{sym:12}{momz:7.2f}{f(sm_flow,2):>6}{f(sm_vol):>6}"
+              f"{f(pe):>7}{f(roe):>7}{f(de):>7}  {sent}")
         for h in heads[:2]:
-            print(f"            • {h[:80]}")
+            print(f"            • {h[:78]}")
 
-    print("\nLIVE snapshot (Yahoo) — current fundamentals + recent news for TODAY's decision.")
-    print("NOT in the backtest (not point-in-time). Sentiment is crude keyword polarity.")
-    print("NOT financial advice.")
+    print("\nColumns: Mom z = momentum strength | Flow = money-flow [-1..1] (accumulation>0) |")
+    print("VolX = volume vs trailing median (>1.5 elevated) | P/E,ROE,D/E,Sentiment = live Yahoo.")
+    print("Flow/VolX are from our own bhavcopy (free). Richer smart-money (FII/DII, bulk/block")
+    print("deals, delivery%, F&O OI) need separate free NSE files — not yet ingested.")
+    print("LIVE snapshot for TODAY's decision; NOT in the backtest; NOT financial advice.")
 
 
 if __name__ == "__main__":
